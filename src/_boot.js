@@ -136,8 +136,28 @@ async function findAvailablePort(startPort) {
 if (process.env.http_proxy) delete process.env.http_proxy;
 if (process.env.https_proxy) delete process.env.https_proxy;
 
-// Keep rendering stable on Linux while still allowing GPU acceleration for smooth UI updates.
-app.commandLine.appendSwitch("disable-features", "Vulkan");
+function loadEarlySettings() {
+    try {
+        return JSON.parse(fs.readFileSync(settingsFile, "utf8"));
+    } catch (error) {
+        return {};
+    }
+}
+
+function appendFeatureSwitch(switchName, featureName) {
+    const existing = app.commandLine.getSwitchValue(switchName);
+    const features = new Set(existing.split(",").map(value => value.trim()).filter(Boolean));
+    features.add(featureName);
+    app.commandLine.appendSwitch(switchName, Array.from(features).join(","));
+}
+
+const earlySettings = loadEarlySettings();
+if (process.env.EDEX_DISABLE_VULKAN === "true" || earlySettings.disableVulkan === true) {
+    appendFeatureSwitch("disable-features", "Vulkan");
+}
+if (process.env.EDEX_ENABLE_VULKAN === "true" || earlySettings.enableVulkan === true) {
+    appendFeatureSwitch("enable-features", "Vulkan");
+}
 if (process.env.EDEX_DISABLE_GPU === "true") {
     app.disableHardwareAcceleration();
 }
@@ -173,7 +193,9 @@ if (!fs.existsSync(settingsFile)) {
         excludeThreadsFromToplist: true,
         hideDotfiles: false,
         fsListView: false,
-        termHardwareAcceleration: true,
+        termHardwareAcceleration: false,
+        enableVulkan: false,
+        disableVulkan: false,
         termLigatures: false,
         disableGlobe: false,
         disableUpdateCheck: false,
@@ -442,8 +464,10 @@ app.on('ready', async () => {
     let settings = require(settingsFile);
     const settingsDefaults = {
         keepGeometry: false,
-        termHardwareAcceleration: true,
+        termHardwareAcceleration: false,
         termLigatures: false,
+        enableVulkan: false,
+        disableVulkan: false,
         disableGlobe: false,
         disableUpdateCheck: false
     };

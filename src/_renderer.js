@@ -488,6 +488,9 @@ async function initUI() {
         })
     };
     window.currentTerm = 0;
+    if (typeof window.term[0].enableHardwareAcceleration === "function") {
+        window.term[0].enableHardwareAcceleration();
+    }
     window.term[0].onprocesschange = p => {
         document.getElementById("shell_tab0").innerHTML = `<p>MAIN - ${p}</p>`;
     };
@@ -673,6 +676,11 @@ window.focusShellTab = number => {
     window.audioManager.folder.play();
 
     if (number !== window.currentTerm && window.term[number]) {
+        const previousTerm = window.term[window.currentTerm];
+        if (previousTerm && typeof previousTerm.disableHardwareAcceleration === "function") {
+            previousTerm.disableHardwareAcceleration();
+        }
+
         window.currentTerm = number;
 
         document.querySelectorAll(`ul#main_shell_tabs > li:not(:nth-child(${number+1}))`).forEach(e => {
@@ -685,6 +693,9 @@ window.focusShellTab = number => {
         });
         document.getElementById("terminal"+number).setAttribute("class", "active");
 
+        if (typeof window.term[number].enableHardwareAcceleration === "function") {
+            window.term[number].enableHardwareAcceleration();
+        }
         window.term[number].fit();
         window.term[number].term.focus();
         window.term[number].resendCWD();
@@ -711,6 +722,9 @@ window.focusShellTab = number => {
                     delete window.term[number].onprocesschange;
                     document.getElementById("shell_tab"+number).innerHTML = "<p>EMPTY</p>";
                     document.getElementById("terminal"+number).innerHTML = "";
+                    if (typeof window.term[number].disableHardwareAcceleration === "function") {
+                        window.term[number].disableHardwareAcceleration();
+                    }
                     window.term[number].term.dispose();
                     delete window.term[number];
                     window.useAppShortcut("PREVIOUS_TAB");

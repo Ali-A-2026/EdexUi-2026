@@ -68,15 +68,38 @@ class Terminal {
                 }
             });
             let fitAddon = new FitAddon();
+            this.fitAddon = fitAddon;
             this.term.loadAddon(fitAddon);
             this.term.open(document.getElementById(opts.parentId));
-            if (window.settings.termHardwareAcceleration) {
+
+            this._webglFailed = false;
+            this._webglAddon = null;
+            this.disableHardwareAcceleration = () => {
+                if (this._webglAddon && typeof this._webglAddon.dispose === "function") {
+                    this._webglAddon.dispose();
+                }
+                this._webglAddon = null;
+            };
+            this.enableHardwareAcceleration = () => {
+                if (!window.settings.termHardwareAcceleration || this._webglFailed || this._webglAddon) return;
+                const parent = document.getElementById(opts.parentId);
+                if (!parent || !parent.classList.contains("active")) return;
                 try {
-                    this.term.loadAddon(new WebglAddon());
+                    this._webglAddon = new WebglAddon();
+                    if (typeof this._webglAddon.onContextLoss === "function") {
+                        this._webglAddon.onContextLoss(() => {
+                            console.warn("WebGL terminal context lost, falling back to canvas renderer");
+                            this.disableHardwareAcceleration();
+                            this._webglFailed = true;
+                        });
+                    }
+                    this.term.loadAddon(this._webglAddon);
                 } catch (error) {
+                    this._webglFailed = true;
+                    this._webglAddon = null;
                     console.warn("WebGL terminal acceleration disabled:", error);
                 }
-            }
+            };
             if (window.settings.termLigatures) {
                 try {
                     let ligaturesAddon = new LigaturesAddon();
@@ -125,9 +148,12 @@ class Terminal {
                 let attachAddon = new AttachAddon(this.socket);
                 this.term.loadAddon(attachAddon);
                 this.fit();
+                this.enableHardwareAcceleration();
                 this.forceRefresh();
             };
-            this.socket.onerror = e => {throw JSON.stringify(e)};
+            this.socket.onerror = error => {
+                console.warn(`Terminal socket error on port ${this.port}:`, error);
+            };
             this.socket.onclose = e => {
                 if (this.onclose) {
                     this.onclose(e);
@@ -181,7 +207,8 @@ class Terminal {
                 this._lastTouch = null;
             });
 
-            document.querySelector(".xterm-helper-textarea").addEventListener("keydown", e => {
+            const terminalTextarea = document.querySelector(`#${opts.parentId} .xterm-helper-textarea`);
+            if (terminalTextarea) terminalTextarea.addEventListener("keydown", e => {
                 if (e.key === "F11" && window.settings.allowWindowed) {
                     e.preventDefault();
                     window.toggleFullScreen();
@@ -191,6 +218,7 @@ class Terminal {
             this.forceRefresh = () => {
                 const redraw = () => {
                     this.fit();
+                    this.enableHardwareAcceleration();
                     if (typeof this.term.refresh === "function") {
                         this.term.refresh(0, this.term.rows - 1);
                     }
@@ -204,7 +232,8 @@ class Terminal {
 
             this.fit = () => {
                 this.lastRefit = Date.now();
-                let {cols, rows} = fitAddon.proposeDimensions();
+                let {cols, rows} = this.fitAddon.proposeDimensions() || {};
+                if (!cols || !rows) return;
 
                 // Apply custom fixes based on screen ratio, see #302
                 let w = screen.width;
