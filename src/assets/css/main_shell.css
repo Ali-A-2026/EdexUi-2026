@@ -1,0 +1,278 @@
+section#main_shell {
+    width: 65%;
+    height: 60.3%;
+    padding: 0.74vh;
+    /* border: 0.18vh solid rgba(var(--color_r), var(--color_g), var(--color_b), 0.5); */
+    /* border-radius: 0.278vh; */
+
+    --aug-border: 0.18vh;
+    --aug-border-bg: rgb(var(--color_r), var(--color_g), var(--color_b));
+    --aug-border-opacity: 0.5;
+    --aug-inset-bg: none;
+    --aug-inset-opacity: 0;
+
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: flex-start;
+    overflow: hidden;
+
+    transition: width .5s cubic-bezier(0.85, 0.5, 0.85, 0.5), height .5s cubic-bezier(0.85, 0.5, 0.85, 0.5);
+}
+
+section#main_shell::before {
+    display: none !important;
+    content: none !important;
+}
+
+section#main_shell::after {
+    background: transparent !important;
+}
+
+h1#main_shell_greeting {
+    font-size: 3.9vh;
+    font-weight: normal;
+    margin: auto;
+    opacity: 0;
+    transition: opacity .5s cubic-bezier(0.4, 0, 1, 1);
+}
+
+h1#main_shell_greeting > em {
+    font-style: normal;
+    font-weight: bold;
+}
+
+section#main_shell > h3.title {
+    top: 0.74vh;
+    left: 16.5vw;
+    width: 66%;
+    transition: opacity .5s cubic-bezier(0.4, 0, 1, 1) .5s;
+}
+
+section#main_shell > h3.title > p {
+    width: 49.8%;
+}
+
+ul#main_shell_tabs {
+    margin: 0;
+    margin-top: -0.70vh;
+    margin-left: -0.74vh;
+    padding: 0;
+    width: calc(100% + 1.48vh);
+    display: flex;
+    box-sizing: border-box;
+    border-bottom: 0.18vh solid rgba(var(--color_r), var(--color_g), var(--color_b), 0.22);
+    border-top-left-radius: 0.278vh;
+    border-top-right-radius: 0.278vh;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-evenly;
+    flex-wrap: nowrap;
+    overflow: hidden;
+}
+
+div#shell_quick_actions {
+    width: 100%;
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    padding: 0.6vh 0 1vh;
+    box-sizing: border-box;
+}
+
+button#shell_apps_button {
+    cursor: pointer;
+    min-width: 16vw;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.25vh;
+    padding: 0.85vh 1.4vh 0.95vh;
+    border: 0.18vh solid rgba(var(--color_r), var(--color_g), var(--color_b), 0.75);
+    background:
+        linear-gradient(135deg,
+        rgba(var(--color_r), var(--color_g), var(--color_b), 0.22),
+        rgba(var(--color_r), var(--color_g), var(--color_b), 0.08));
+    color: rgb(var(--color_r), var(--color_g), var(--color_b));
+    font-family: var(--font_main);
+    letter-spacing: 0.12vh;
+    text-transform: uppercase;
+    box-shadow: inset 0 0 0.8vh rgba(var(--color_r), var(--color_g), var(--color_b), 0.08);
+    transition: background 120ms linear, color 120ms linear, box-shadow 120ms linear, transform 120ms linear;
+}
+
+button#shell_apps_button > span {
+    font-size: 1.15vh;
+    opacity: 0.78;
+}
+
+button#shell_apps_button > strong {
+    font-size: 1.7vh;
+    font-weight: normal;
+}
+
+button#shell_apps_button:hover,
+button#shell_apps_button:focus {
+    outline: none;
+    background: rgb(var(--color_r), var(--color_g), var(--color_b));
+    color: var(--color_light_black);
+    box-shadow: 0 0 1.8vh rgba(var(--color_r), var(--color_g), var(--color_b), 0.32);
+    transform: translateY(-0.1vh);
+}
+
+ul#main_shell_tabs > li {
+    cursor: pointer;
+    display: block;
+    font-family: var(--font_main);
+    font-weight: normal;
+    width: 100%;
+    padding-top: 0.7vh;
+    padding-bottom: 0.4vh;
+    text-align: center;
+    box-sizing: border-box;
+
+    background: #05080c;
+    transform: skewX(35deg);
+}
+ul#main_shell_tabs > li > p {
+    margin: 0;
+    transform: skewX(-35deg);
+}
+ul#main_shell_tabs > li:not(:first-child) {
+    border-left: 0.18vh solid rgba(var(--color_r), var(--color_g), var(--color_b), 0.18);
+}
+
+ul#main_shell_tabs > li.active {
+    background: rgb(var(--color_r), var(--color_g), var(--color_b));
+    color: var(--color_light_black);
+    font-weight: bold;
+    transform: skewX(35deg) scale(1.2);
+    z-index: -1;
+}
+
+div#main_shell_innercontainer, div#main_shell_innercontainer pre {
+    height: 100%;
+    width: 100%;
+    margin: 0vh;
+    overflow: hidden;
+    position: relative;
+    z-index: 1;
+}
+
+div#main_shell_innercontainer pre {
+    display: none;
+    z-index: -999;
+    opacity: 0;
+    position: relative;
+}
+
+div#main_shell_innercontainer pre.active {
+    display: block;
+    z-index: inherit;
+    opacity: 1;
+}
+
+div#main_shell_innercontainer pre#terminal1 {
+    top: -100%;
+}
+div#main_shell_innercontainer pre#terminal2 {
+    top: -200%;
+}
+div#main_shell_innercontainer pre#terminal3 {
+    top: -300%;
+}
+div#main_shell_innercontainer pre#terminal4 {
+    top: -400%;
+}
+
+.terminal .xterm-viewport {
+    overflow: hidden;
+    cursor: default;
+    position: absolute;
+    right: 0;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    padding-bottom: 10px;
+}
+
+.xterm {
+    font-family: monospace;
+    font-feature-settings: "liga" 0;
+    position: relative;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+.xterm.focus,
+.xterm:focus {
+    outline: none;
+}
+
+.xterm .xterm-helpers {
+    position: absolute;
+    top: 0;
+    z-index: 10;
+}
+
+.xterm .xterm-helper-textarea {
+    position: absolute;
+    opacity: 0;
+    left: -9999em;
+    top: 0;
+    width: 0;
+    height: 0;
+    z-index: -10;
+    white-space: nowrap;
+    overflow: hidden;
+    resize: none;
+}
+
+.xterm .composition-view {
+    background: #000;
+    color: #FFF;
+    display: none;
+    position: absolute;
+    white-space: nowrap;
+    z-index: 1;
+}
+
+.xterm .composition-view.active {
+    display: block;
+}
+
+.xterm .xterm-viewport {
+    background-color: #000;
+    overflow-y: hidden;
+}
+
+.xterm .xterm-screen {
+    position: relative;
+}
+
+.xterm canvas {
+    position: absolute;
+    left: 0;
+    top: 0;
+}
+
+.xterm .xterm-scroll-area {
+    visibility: hidden;
+}
+
+.xterm .xterm-char-measure-element {
+    display: inline-block;
+    visibility: hidden;
+    position: absolute;
+    left: -9999em;
+    line-height: normal;
+}
+
+.xterm.enable-mouse-events {
+    /* When mouse events are enabled (eg. tmux), revert to the standard pointer cursor */
+    cursor: default;
+}
+
+.xterm:not(.enable-mouse-events) {
+    cursor: text;
+}

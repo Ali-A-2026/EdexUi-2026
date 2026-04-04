@@ -1,0 +1,100 @@
+name: Build packaged binaries
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install system dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y libc6-dev-i386 gcc-multilib g++-multilib rpm
+
+      - name: Install root dependencies
+        run: npm install
+
+      - name: Install app dependencies
+        run: cd src && npm install
+
+      - name: Prepare packaged app sources
+        run: npm run prebuild-linux
+
+      - name: Build Linux artifacts
+        run: ./node_modules/.bin/electron-builder build -l AppImage deb rpm --x64
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-release-files
+          path: |
+            dist/*.AppImage
+            dist/*.deb
+            dist/*.rpm
+            dist/latest-linux.yml
+          if-no-files-found: error
+
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build Windows artifact
+        run: npm run build-windows
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-release-files
+          path: |
+            dist/*.exe
+            dist/*.blockmap
+            dist/latest.yml
+          if-no-files-found: error
+
+  build-darwin:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build macOS artifact
+        run: npm run build-darwin
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos-release-files
+          path: dist/*.dmg
+          if-no-files-found: error
