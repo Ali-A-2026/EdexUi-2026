@@ -111,6 +111,19 @@ function parseSettingsEnv(rawEnv) {
     return env;
 }
 
+function parseShellArgs(rawArgs) {
+    if (Array.isArray(rawArgs)) return rawArgs;
+    if (typeof rawArgs !== "string") return [];
+
+    const trimmed = rawArgs.trim();
+    if (!trimmed) return [];
+
+    const matches = trimmed.match(/"[^"]*"|'[^']*'|\S+/g);
+    if (!matches) return [];
+
+    return matches.map(arg => arg.replace(/^['"]|['"]$/g, ""));
+}
+
 function isPortAvailable(port) {
     return new Promise(resolve => {
         const server = net.createServer();
@@ -157,6 +170,7 @@ if (process.env.EDEX_DISABLE_VULKAN === "true" || earlySettings.disableVulkan ==
 }
 if (process.env.EDEX_ENABLE_VULKAN === "true" || earlySettings.enableVulkan === true) {
     appendFeatureSwitch("enable-features", "Vulkan");
+    app.commandLine.appendSwitch("use-angle", "vulkan");
 }
 if (process.env.EDEX_DISABLE_GPU === "true") {
     app.disableHardwareAcceleration();
@@ -511,7 +525,7 @@ app.on('ready', async () => {
     tty = new Terminal({
         role: "server",
         shell: settings.shell,
-        params: settings.shellArgs || '',
+        params: parseShellArgs(settings.shellArgs),
         cwd: settings.cwd,
         env: cleanEnv,
         port: settings.port || 3000
@@ -566,7 +580,7 @@ app.on('ready', async () => {
             let term = new Terminal({
                 role: "server",
                 shell: settings.shell,
-                params: settings.shellArgs || '',
+                params: parseShellArgs(settings.shellArgs),
                 cwd: tty.tty._cwd || settings.cwd,
                 env: cleanEnv,
                 port: port

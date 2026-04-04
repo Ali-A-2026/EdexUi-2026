@@ -201,10 +201,10 @@ class Terminal {
                 }
             });
             parent.addEventListener("touchend", e => {
-                this._lastTouch = null;
+                this._lastTouchY = null;
             });
             parent.addEventListener("touchcancel", e => {
-                this._lastTouch = null;
+                this._lastTouchY = null;
             });
 
             const terminalTextarea = document.querySelector(`#${opts.parentId} .xterm-helper-textarea`);
