@@ -50,7 +50,7 @@ Current builds are unsigned until you add your own release-signing credentials f
 
 Before uploading, confirm:
 
-1. The final GitHub repository path is `Ali-A-Alwahed/EdexUi_2026`
+1. The final GitHub repository path is `Ali-A-2026/EdexUi_2026`
 2. If the repo name changes, update URLs in `package.json`, `src/package.json`, and `src/classes/updateChecker.class.js`
 3. Commit the source files, but do not commit `dist/`, `node_modules/`, or `prebuild-src/`
 

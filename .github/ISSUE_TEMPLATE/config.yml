@@ -1,8 +1,8 @@
 blank_issues_enabled: true
 contact_links:
   - name: Feature Ideas
-    url: https://github.com/Ali-A-Alwahed/EdexUi_2026/discussions/new?category=ideas
+    url: https://github.com/Ali-A-2026/EdexUi_2026/discussions/new?category=ideas
     about: Share feature ideas for EdexUi-2026 here.
   - name: Questions
-    url: https://github.com/Ali-A-Alwahed/EdexUi_2026/discussions/new?category=questions
+    url: https://github.com/Ali-A-2026/EdexUi_2026/discussions/new?category=questions
     about: Ask usage or setup questions here.
