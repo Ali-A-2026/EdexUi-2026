@@ -6,7 +6,7 @@ This repository is intended to stay respectful to upstream:
 
 - Original project creator: Gabriel "Squared" Saillard
 - Current maintainer of this continuation: Ali-A-Alwahed
-- Special thanks: Hyder61112
+- Special thanks: Hyder61112, Ahmed Adnan
 
 ## Status
 
@@ -90,7 +90,7 @@ EdexUi-2026 is derived from the original eDEX-UI project by Gabriel "Squared" Sa
 
 This continuation is maintained by Ali-A-Alwahed.
 
-Special thanks to Hyder61112 for helping with the project.
+Special thanks to Hyder61112 and Ahmed Adnan for helping with the project.
 
 ## License
 
