@@ -32,14 +32,14 @@ Release-readiness update focused on polish, packaging, attribution, and smoother
 
 ### Packaging
 
-- Prepared refreshed Linux release outputs for `.AppImage`, `.deb`, and `.rpm`.
-- Kept Windows `.exe` and macOS `.dmg` release paths ready through Electron Builder and GitHub Actions.
+- Refreshed release outputs for `.AppImage`, `.deb`, `.rpm`, `.exe`, and `.dmg`.
+- Aligned GitHub Actions and repository metadata so cross-platform packaging succeeds against the correct repository owner.
 
 ### Attribution
 
 - Maintainer for this continuation: `Ali-A-Alwahed`
 - Original creator of eDEX-UI: Gabriel "Squared" Saillard
-- Special thanks: `Hayder61112`
+- Special thanks: `Hyder61112`
 
 ## [2026.1.0] - 2026-04-03
 

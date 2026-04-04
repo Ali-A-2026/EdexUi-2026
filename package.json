@@ -41,7 +41,7 @@
   },
   "contributors": [
     "Gabriel \"Squared\" Saillard (original creator of eDEX-UI)",
-    "Hayder61112 (special thanks)"
+    "Hyder61112 (special thanks)"
   ],
   "license": "GPL-3.0-or-later",
   "bugs": {
@@ -54,7 +54,7 @@
     "publish": "github",
     "asar": true,
     "compression": "normal",
-    "copyright": "Copyright © 2026 Ali-A-Alwahed. Based on the original eDEX-UI by Gabriel Squared Saillard and upstream contributors. Special thanks to Hayder61112.",
+    "copyright": "Copyright © 2026 Ali-A-Alwahed. Based on the original eDEX-UI by Gabriel Squared Saillard and upstream contributors. Special thanks to Hyder61112.",
     "directories": {
       "output": "dist",
       "app": "prebuild-src"

@@ -14,7 +14,7 @@
 
 - Maintainer of this continuation: Ali-A-Alwahed
 - Original creator of eDEX-UI: Gabriel "Squared" Saillard
-- Special thanks: Hayder61112
+- Special thanks: Hyder61112
 
 ## Packaging Notes
 
