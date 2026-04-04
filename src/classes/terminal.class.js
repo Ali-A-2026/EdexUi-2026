@@ -12,6 +12,7 @@ class Terminal {
 
             this.port = opts.port || 3000;
             this.cwd = "";
+            this.isReady = false;
             this.oncwdchange = () => {};
 
             this._sendSizeToServer = () => {
@@ -67,10 +68,11 @@ class Terminal {
                     brightWhite: window.theme.colors.brightWhite || colorify("#eeeeec")
                 }
             });
+            this.parent = document.getElementById(opts.parentId);
             let fitAddon = new FitAddon();
             this.fitAddon = fitAddon;
             this.term.loadAddon(fitAddon);
-            this.term.open(document.getElementById(opts.parentId));
+            this.term.open(this.parent);
 
             this._webglFailed = false;
             this._webglAddon = null;
@@ -113,8 +115,15 @@ class Terminal {
                 return true;
             });
             // Prevent soft-keyboard on touch devices #733
-            document.querySelectorAll('.xterm-helper-textarea').forEach(textarea => textarea.setAttribute('readonly', 'readonly'))
-            this.term.focus();
+            document.querySelectorAll('.xterm-helper-textarea').forEach(textarea => textarea.setAttribute('readonly', 'readonly'));
+            this.focus = () => {
+                this.term.focus();
+                const textarea = this.parent ? this.parent.querySelector('.xterm-helper-textarea') : null;
+                if (textarea && typeof textarea.focus === 'function') {
+                    textarea.focus({preventScroll: true});
+                }
+            };
+            this.focus();
 
             this.Ipc.send("terminal_channel-"+this.port, "Renderer startup");
             this.Ipc.on("terminal_channel-"+this.port, (e, ...args) => {
@@ -145,16 +154,21 @@ class Terminal {
 
             this.socket = new WebSocket("ws://"+sockHost+":"+sockPort);
             this.socket.onopen = () => {
+                this.isReady = true;
                 let attachAddon = new AttachAddon(this.socket);
                 this.term.loadAddon(attachAddon);
                 this.fit();
                 this.enableHardwareAcceleration();
                 this.forceRefresh();
+                if (this.onready) {
+                    this.onready();
+                }
             };
             this.socket.onerror = error => {
                 console.warn(`Terminal socket error on port ${this.port}:`, error);
             };
             this.socket.onclose = e => {
+                this.isReady = false;
                 if (this.onclose) {
                     this.onclose(e);
                 }
@@ -184,7 +198,7 @@ class Terminal {
                 }
             });
 
-            let parent = document.getElementById(opts.parentId);
+            let parent = this.parent;
             parent.addEventListener("wheel", e => {
                 this.term.scrollLines(Math.round(e.deltaY/10));
             });
@@ -207,13 +221,17 @@ class Terminal {
                 this._lastTouchY = null;
             });
 
-            const terminalTextarea = document.querySelector(`#${opts.parentId} .xterm-helper-textarea`);
+            const terminalTextarea = this.parent ? this.parent.querySelector('.xterm-helper-textarea') : null;
             if (terminalTextarea) terminalTextarea.addEventListener("keydown", e => {
                 if (e.key === "F11" && window.settings.allowWindowed) {
                     e.preventDefault();
                     window.toggleFullScreen();
                 }
             });
+            if (parent) {
+                parent.addEventListener("mousedown", () => this.focus());
+                parent.addEventListener("touchstart", () => this.focus(), {passive: true});
+            }
 
             this.forceRefresh = () => {
                 const redraw = () => {

@@ -150,39 +150,41 @@ ul#main_shell_tabs > li.active {
     z-index: -1;
 }
 
-div#main_shell_innercontainer, div#main_shell_innercontainer pre {
+div#main_shell_innercontainer {
     height: 100%;
     width: 100%;
-    margin: 0vh;
+    margin: 0;
     overflow: hidden;
     position: relative;
     z-index: 1;
 }
 
 div#main_shell_innercontainer pre {
+    height: 100%;
+    width: 100%;
+    margin: 0;
+    overflow: hidden;
+    position: absolute;
+    inset: 0;
     display: none;
-    z-index: -999;
+    z-index: 0;
     opacity: 0;
-    position: relative;
+    pointer-events: none;
 }
 
 div#main_shell_innercontainer pre.active {
     display: block;
-    z-index: inherit;
+    z-index: 1;
     opacity: 1;
+    pointer-events: auto;
 }
 
-div#main_shell_innercontainer pre#terminal1 {
-    top: -100%;
-}
-div#main_shell_innercontainer pre#terminal2 {
-    top: -200%;
-}
-div#main_shell_innercontainer pre#terminal3 {
-    top: -300%;
-}
-div#main_shell_innercontainer pre#terminal4 {
-    top: -400%;
+div#main_shell_innercontainer pre.prewarm {
+    display: block;
+    visibility: hidden;
+    opacity: 0;
+    pointer-events: none;
+    z-index: 0;
 }
 
 .terminal .xterm-viewport {

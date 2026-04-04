@@ -165,12 +165,22 @@ function appendFeatureSwitch(switchName, featureName) {
 }
 
 const earlySettings = loadEarlySettings();
-if (process.env.EDEX_DISABLE_VULKAN === "true" || earlySettings.disableVulkan === true) {
+const vulkanDisabled = process.env.EDEX_DISABLE_VULKAN === "true" || earlySettings.disableVulkan === true;
+const vulkanEnabled = !vulkanDisabled && (process.env.EDEX_ENABLE_VULKAN === "true" || earlySettings.enableVulkan === true);
+const vulkanOptimizationsEnabled = vulkanEnabled
+    && process.env.EDEX_DISABLE_VULKAN_OPTIMIZATIONS !== "true"
+    && earlySettings.optimizeVulkan !== false;
+if (vulkanDisabled) {
     appendFeatureSwitch("disable-features", "Vulkan");
 }
-if (process.env.EDEX_ENABLE_VULKAN === "true" || earlySettings.enableVulkan === true) {
+if (vulkanEnabled) {
     appendFeatureSwitch("enable-features", "Vulkan");
     app.commandLine.appendSwitch("use-angle", "vulkan");
+    if (vulkanOptimizationsEnabled) {
+        app.commandLine.appendSwitch("enable-gpu-rasterization");
+        app.commandLine.appendSwitch("enable-zero-copy");
+        signale.info("Enabled safe Vulkan rendering optimizations");
+    }
 }
 if (process.env.EDEX_DISABLE_GPU === "true") {
     app.disableHardwareAcceleration();
@@ -210,6 +220,7 @@ if (!fs.existsSync(settingsFile)) {
         termHardwareAcceleration: false,
         enableVulkan: false,
         disableVulkan: false,
+        optimizeVulkan: true,
         termLigatures: false,
         disableGlobe: false,
         disableUpdateCheck: false,
@@ -482,6 +493,7 @@ app.on('ready', async () => {
         termLigatures: false,
         enableVulkan: false,
         disableVulkan: false,
+        optimizeVulkan: true,
         disableGlobe: false,
         disableUpdateCheck: false
     };
@@ -564,6 +576,12 @@ app.on('ready', async () => {
     }
 
     ipc.on("ttyspawn", (e, arg) => {
+        const requestedCwd = (arg && typeof arg === "object" && typeof arg.cwd === "string" && arg.cwd.trim()) ? arg.cwd.trim() : null;
+        const requestId = (arg && typeof arg === "object" && typeof arg.requestId === "string" && arg.requestId.trim()) ? arg.requestId.trim() : null;
+        const replyChannel = requestId ? `ttyspawn-reply-${requestId}` : "ttyspawn-reply";
+        const reply = message => {
+            e.sender.send(replyChannel, message);
+        };
         let port = null;
         Object.keys(extraTtys).forEach(key => {
             if (extraTtys[key] === null && port === null) {
@@ -574,14 +592,14 @@ app.on('ready', async () => {
 
         if (port === null) {
             signale.error("TTY spawn denied (Reason: exceeded max TTYs number)");
-            e.sender.send("ttyspawn-reply", "ERROR: max number of ttys reached");
+            reply("ERROR: max number of ttys reached");
         } else {
             signale.pending(`Creating new TTY process on port ${port}`);
             let term = new Terminal({
                 role: "server",
                 shell: settings.shell,
                 params: parseShellArgs(settings.shellArgs),
-                cwd: tty.tty._cwd || settings.cwd,
+                cwd: requestedCwd || tty.tty._cwd || settings.cwd,
                 env: cleanEnv,
                 port: port
             });
@@ -606,7 +624,7 @@ app.on('ready', async () => {
             };
 
             extraTtys[port] = term;
-            e.sender.send("ttyspawn-reply", "SUCCESS: "+port);
+            reply("SUCCESS: "+port);
         }
     });
 

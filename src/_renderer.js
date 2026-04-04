@@ -487,13 +487,37 @@ async function initUI() {
             port: window.settings.port || 3000
         })
     };
+    for (let i = 1; i <= 4; i++) {
+        window.term[i] = false;
+    }
     window.currentTerm = 0;
+    window.termLoading = {};
+    window.pendingTermActivation = {};
+    window.prewarmShellTabsPromise = null;
+    window.shellTabsPrewarmStarted = false;
     if (typeof window.term[0].enableHardwareAcceleration === "function") {
         window.term[0].enableHardwareAcceleration();
     }
     window.term[0].onprocesschange = p => {
         document.getElementById("shell_tab0").innerHTML = `<p>MAIN - ${p}</p>`;
     };
+    const startShellTabPrewarm = () => {
+        if (window.shellTabsPrewarmStarted) return;
+        window.shellTabsPrewarmStarted = true;
+        window.prewarmShellTabsPromise = window.prewarmShellTabs().catch(error => {
+            console.warn("Shell tab prewarm failed:", error);
+            return null;
+        });
+    };
+    if (window.term[0].isReady) {
+        setTimeout(startShellTabPrewarm, 50);
+    } else {
+        const previousMainTermReady = window.term[0].onready;
+        window.term[0].onready = () => {
+            if (typeof previousMainTermReady === "function") previousMainTermReady();
+            setTimeout(startShellTabPrewarm, 50);
+        };
+    }
     // Prevent losing hardware keyboard focus on the terminal when using touch keyboard
     window.onmouseup = e => {
         if (window.keyboard.linkedToTerm) window.term[window.currentTerm].term.focus();
@@ -516,6 +540,18 @@ async function initUI() {
     }
 
     await _delay(200);
+
+    if (!window.shellTabsPrewarmStarted) {
+        setTimeout(() => {
+            if (!window.shellTabsPrewarmStarted) {
+                window.shellTabsPrewarmStarted = true;
+                window.prewarmShellTabsPromise = window.prewarmShellTabs().catch(error => {
+                    console.warn("Shell tab prewarm failed:", error);
+                    return null;
+                });
+            }
+        }, 50);
+    }
 
     if (!window.settings.disableUpdateCheck) {
         setTimeout(() => {
@@ -672,74 +708,179 @@ window.openAppManager = () => {
     });
 };
 
+window.setActiveShellTabUI = number => {
+    window.currentTerm = number;
+
+    document.querySelectorAll(`ul#main_shell_tabs > li`).forEach((el, index) => {
+        el.setAttribute("class", index === number ? "active" : "");
+    });
+    document.querySelectorAll(`div#main_shell_innercontainer > pre`).forEach((el, index) => {
+        const shouldBeActive = index === number;
+        el.setAttribute("class", shouldBeActive ? "active" : "");
+        if (!shouldBeActive) {
+            el.classList.remove("prewarm");
+        }
+    });
+};
+
+window.finishShellTabActivation = number => {
+    if (!window.term[number] || typeof window.term[number] !== "object") return;
+    if (typeof window.term[number].enableHardwareAcceleration === "function") {
+        window.term[number].enableHardwareAcceleration();
+    }
+    if (typeof window.term[number].forceRefresh === "function") {
+        window.term[number].forceRefresh();
+    } else {
+        window.term[number].fit();
+    }
+    if (typeof window.term[number].focus === "function") {
+        window.term[number].focus();
+    } else {
+        window.term[number].term.focus();
+    }
+    window.term[number].resendCWD();
+    window.fsDisp.followTab();
+};
+
+window.spawnShellTab = (number, options = {}) => {
+    const { activate = false, prewarm = false, sourceCwd = null } = options;
+    const terminalEl = document.getElementById(`terminal${number}`);
+
+    if (window.term[number] && typeof window.term[number] === "object") {
+        if (activate) {
+            window.setActiveShellTabUI(number);
+            window.finishShellTabActivation(number);
+        }
+        return Promise.resolve(window.term[number]);
+    }
+    if (window.termLoading[number]) {
+        if (prewarm && terminalEl) {
+            terminalEl.classList.add("prewarm");
+        }
+        if (activate) {
+            window.setActiveShellTabUI(number);
+            window.pendingTermActivation[number] = true;
+        }
+        return window.termLoading[number];
+    }
+
+    if (prewarm && terminalEl) {
+        terminalEl.classList.add("prewarm");
+    }
+    if (activate) {
+        window.setActiveShellTabUI(number);
+        window.pendingTermActivation[number] = true;
+    }
+
+    document.getElementById(`shell_tab${number}`).innerHTML = "<p>LOADING...</p>";
+
+    const requestId = `shelltab-${number}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const replyChannel = `ttyspawn-reply-${requestId}`;
+    const requestedCwd = sourceCwd || (window.term[0] ? (window.term[0].cwd || window.settings.cwd) : window.settings.cwd);
+
+    window.termLoading[number] = new Promise((resolve, reject) => {
+        ipc.once(replyChannel, (_event, reply) => {
+            if (reply.startsWith("ERROR")) {
+                if (terminalEl) terminalEl.classList.remove("prewarm");
+                document.getElementById(`shell_tab${number}`).innerHTML = "<p>ERROR</p>";
+                delete window.pendingTermActivation[number];
+                reject(new Error(reply));
+                return;
+            }
+
+            const port = Number(reply.substr(9));
+            const client = new Terminal({
+                role: "client",
+                parentId: `terminal${number}`,
+                port
+            });
+
+            window.term[number] = client;
+
+            client.onclose = () => {
+                delete client.onprocesschange;
+                delete client.onready;
+                document.getElementById(`shell_tab${number}`).innerHTML = "<p>EMPTY</p>";
+                if (terminalEl) {
+                    terminalEl.className = "";
+                    terminalEl.innerHTML = "";
+                }
+                if (typeof client.disableHardwareAcceleration === "function") {
+                    client.disableHardwareAcceleration();
+                }
+                client.term.dispose();
+                window.term[number] = false;
+                delete window.pendingTermActivation[number];
+                if (window.currentTerm === number) {
+                    window.useAppShortcut("PREVIOUS_TAB");
+                }
+            };
+
+            client.onprocesschange = processName => {
+                document.getElementById(`shell_tab${number}`).innerHTML = `<p>#${number+1} - ${processName || "bash"}</p>`;
+            };
+
+            client.onready = () => {
+                if (terminalEl) terminalEl.classList.remove("prewarm");
+                if (window.pendingTermActivation[number] || window.currentTerm === number) {
+                    delete window.pendingTermActivation[number];
+                    window.setActiveShellTabUI(number);
+                    window.finishShellTabActivation(number);
+                }
+                resolve(client);
+            };
+
+            document.getElementById(`shell_tab${number}`).innerHTML = `<p>::${port}</p>`;
+        });
+
+        ipc.send("ttyspawn", {
+            cwd: requestedCwd,
+            requestId
+        });
+    }).finally(() => {
+        delete window.termLoading[number];
+    });
+
+    return window.termLoading[number];
+};
+
+window.prewarmShellTabs = async () => {
+    const tasks = [];
+    const sourceCwd = window.term[0] ? (window.term[0].cwd || window.settings.cwd) : window.settings.cwd;
+    for (let number = 1; number <= 4; number++) {
+        if (window.term[number] && typeof window.term[number] === "object") continue;
+        tasks.push(window.spawnShellTab(number, {
+            prewarm: true,
+            sourceCwd
+        }));
+    }
+    await Promise.allSettled(tasks);
+};
+
 window.focusShellTab = number => {
     window.audioManager.folder.play();
 
-    if (number !== window.currentTerm && window.term[number]) {
-        const previousTerm = window.term[window.currentTerm];
-        if (previousTerm && typeof previousTerm.disableHardwareAcceleration === "function") {
-            previousTerm.disableHardwareAcceleration();
-        }
+    if (number === window.currentTerm && window.term[number] && typeof window.term[number] === "object") {
+        window.finishShellTabActivation(number);
+        return;
+    }
 
-        window.currentTerm = number;
+    const previousTerm = window.term[window.currentTerm];
+    if (previousTerm && typeof previousTerm.disableHardwareAcceleration === "function") {
+        previousTerm.disableHardwareAcceleration();
+    }
 
-        document.querySelectorAll(`ul#main_shell_tabs > li:not(:nth-child(${number+1}))`).forEach(e => {
-            e.setAttribute("class", "");
-        });
-        document.getElementById("shell_tab"+number).setAttribute("class", "active");
+    if (window.term[number] && typeof window.term[number] === "object") {
+        window.setActiveShellTabUI(number);
+        window.finishShellTabActivation(number);
+        return;
+    }
 
-        document.querySelectorAll(`div#main_shell_innercontainer > pre:not(:nth-child(${number+1}))`).forEach(e => {
-            e.setAttribute("class", "");
-        });
-        document.getElementById("terminal"+number).setAttribute("class", "active");
-
-        if (typeof window.term[number].enableHardwareAcceleration === "function") {
-            window.term[number].enableHardwareAcceleration();
-        }
-        window.term[number].fit();
-        window.term[number].term.focus();
-        window.term[number].resendCWD();
-
-        window.fsDisp.followTab();
-    } else if (number > 0 && number <= 4 && window.term[number] !== null && typeof window.term[number] !== "object") {
-        window.term[number] = null;
-
-        document.getElementById("shell_tab"+number).innerHTML = "<p>LOADING...</p>";
-        ipc.send("ttyspawn", "true");
-        ipc.once("ttyspawn-reply", (e, r) => {
-            if (r.startsWith("ERROR")) {
-                document.getElementById("shell_tab"+number).innerHTML = "<p>ERROR</p>";
-            } else if (r.startsWith("SUCCESS")) {
-                let port = Number(r.substr(9));
-
-                window.term[number] = new Terminal({
-                    role: "client",
-                    parentId: "terminal"+number,
-                    port
-                });
-
-                window.term[number].onclose = e => {
-                    delete window.term[number].onprocesschange;
-                    document.getElementById("shell_tab"+number).innerHTML = "<p>EMPTY</p>";
-                    document.getElementById("terminal"+number).innerHTML = "";
-                    if (typeof window.term[number].disableHardwareAcceleration === "function") {
-                        window.term[number].disableHardwareAcceleration();
-                    }
-                    window.term[number].term.dispose();
-                    delete window.term[number];
-                    window.useAppShortcut("PREVIOUS_TAB");
-                };
-
-                window.term[number].onprocesschange = p => {
-                    document.getElementById("shell_tab"+number).innerHTML = `<p>#${number+1} - ${p}</p>`;
-                };
-
-                document.getElementById("shell_tab"+number).innerHTML = `<p>::${port}</p>`;
-                setTimeout(() => {
-                    window.focusShellTab(number);
-                }, 500);
-            }
-        });
+    if (number > 0 && number <= 4) {
+        window.spawnShellTab(number, {
+            activate: true,
+            sourceCwd: window.term[window.currentTerm] ? (window.term[window.currentTerm].cwd || window.settings.cwd) : window.settings.cwd
+        }).catch(() => {});
     }
 };
 
@@ -943,6 +1084,38 @@ window.openSettings = async () => {
                         </select></td>
                     </tr>
                     <tr>
+                        <td>termHardwareAcceleration</td>
+                        <td>Use GPU acceleration for the visible terminal tab only</td>
+                        <td><select id="settingsEditor-termHardwareAcceleration">
+                            <option>${window.settings.termHardwareAcceleration}</option>
+                            <option>${!window.settings.termHardwareAcceleration}</option>
+                        </select></td>
+                    </tr>
+                    <tr>
+                        <td>enableVulkan</td>
+                        <td>Prefer Vulkan rendering when the system supports it</td>
+                        <td><select id="settingsEditor-enableVulkan">
+                            <option>${window.settings.enableVulkan}</option>
+                            <option>${!window.settings.enableVulkan}</option>
+                        </select></td>
+                    </tr>
+                    <tr>
+                        <td>disableVulkan</td>
+                        <td>Force-disable Vulkan if a driver is unstable</td>
+                        <td><select id="settingsEditor-disableVulkan">
+                            <option>${window.settings.disableVulkan}</option>
+                            <option>${!window.settings.disableVulkan}</option>
+                        </select></td>
+                    </tr>
+                    <tr>
+                        <td>optimizeVulkan</td>
+                        <td>Enable safe Vulkan rasterization and zero-copy optimizations</td>
+                        <td><select id="settingsEditor-optimizeVulkan">
+                            <option>${window.settings.optimizeVulkan !== false}</option>
+                            <option>${window.settings.optimizeVulkan === false}</option>
+                        </select></td>
+                    </tr>
+                    <tr>
                         <td>experimentalGlobeFeatures</td>
                         <td>Toggle experimental features for the network globe</td>
                         <td><select id="settingsEditor-experimentalGlobeFeatures">
@@ -1008,6 +1181,13 @@ window.writeSettingsFile = () => {
         excludeThreadsFromToplist: (document.getElementById("settingsEditor-excludeThreadsFromToplist").value === "true"),
         hideDotfiles: (document.getElementById("settingsEditor-hideDotfiles").value === "true"),
         fsListView: (document.getElementById("settingsEditor-fsListView").value === "true"),
+        termHardwareAcceleration: (document.getElementById("settingsEditor-termHardwareAcceleration").value === "true"),
+        enableVulkan: (document.getElementById("settingsEditor-enableVulkan").value === "true"),
+        disableVulkan: (document.getElementById("settingsEditor-disableVulkan").value === "true"),
+        optimizeVulkan: (document.getElementById("settingsEditor-optimizeVulkan").value === "true"),
+        termLigatures: !!window.settings.termLigatures,
+        disableGlobe: !!window.settings.disableGlobe,
+        disableUpdateCheck: !!window.settings.disableUpdateCheck,
         experimentalGlobeFeatures: (document.getElementById("settingsEditor-experimentalGlobeFeatures").value === "true"),
         experimentalFeatures: (document.getElementById("settingsEditor-experimentalFeatures").value === "true")
     };
