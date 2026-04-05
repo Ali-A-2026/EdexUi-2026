@@ -27,7 +27,7 @@
     "postbuild-linux": "rm -R prebuild-src",
     "postbuild-darwin": "rm -R prebuild-src",
     "postbuild-windows": "rmdir /S /Q prebuild-src",
-    "test": "rsync -a --info=progress2 src/ prebuild-src --exclude node_modules && node prebuild-minify.js && cd prebuild-src && npm install && snyk test && cd .. && rm -R prebuild-src",
+    "test": "rsync -a --info=progress2 src/ prebuild-src --exclude node_modules && node prebuild-minify.js && cd prebuild-src && npm install && npm audit --omit=dev && cd .. && rm -R prebuild-src",
     "init-file-icons": "git submodule update --init",
     "update-file-icons": "git submodule foreach git pull origin master && node file-icons-generator.js"
   },
@@ -122,9 +122,7 @@
     "terser": "^5.9.0"
   },
   "optionalDependencies": {
-    "cson-parser": "4.0.9"
-  },
-  "devDependencies": {
+    "cson-parser": "4.0.9",
     "dmg-license": "^1.0.11"
   }
 }
