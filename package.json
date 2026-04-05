@@ -33,7 +33,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Ali-A-2026/EdexUi_2026.git"
+    "url": "git+https://github.com/Ali-A-2026/EdexUi-2026.git"
   },
   "author": {
     "name": "Ali-A-Alwahed",
@@ -46,9 +46,9 @@
   ],
   "license": "GPL-3.0-or-later",
   "bugs": {
-    "url": "https://github.com/Ali-A-2026/EdexUi_2026/issues"
+    "url": "https://github.com/Ali-A-2026/EdexUi-2026/issues"
   },
-  "homepage": "https://github.com/Ali-A-2026/EdexUi_2026#readme",
+  "homepage": "https://github.com/Ali-A-2026/EdexUi-2026#readme",
   "build": {
     "appId": "com.edexui2026.app",
     "productName": "EdexUi-2026",

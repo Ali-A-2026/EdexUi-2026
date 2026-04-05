@@ -4,7 +4,7 @@ class UpdateChecker {
         let electron = require("electron");
         let remote = require("@electron/remote");
         let current = remote.app.getVersion();
-        let repo = "Ali-A-2026/EdexUi_2026";
+        let repo = "Ali-A-2026/EdexUi-2026";
 
         this._failed = false;
         this._willfail = false;
