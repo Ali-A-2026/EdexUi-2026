@@ -924,7 +924,7 @@ window.openSettings = async () => {
                     </tr>
                     <tr>
                         <td>about</td>
-                        <td>Maintained by Ali-A-Alwahed. Original eDEX-UI created by Gabriel "Squared" Saillard. Special thanks to Hyder61112 and Ahmed Adnan.</td>
+                        <td>Maintained by Ali-A-Alwahed. Original eDEX-UI created by Gabriel "Squared" Saillard. Special thanks to Hyder6112 and Ahmed Adnan.</td>
                         <td>release info</td>
                     </tr>
                     <tr>

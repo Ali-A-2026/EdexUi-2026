@@ -39,7 +39,7 @@ Release-readiness update focused on polish, packaging, attribution, and smoother
 
 - Maintainer for this continuation: `Ali-A-Alwahed`
 - Original creator of eDEX-UI: Gabriel "Squared" Saillard
-- Special thanks: `Hyder61112`, `Ahmed Adnan`
+- Special thanks: `Hyder6112`, `Ahmed Adnan`
 
 ## [2026.1.0] - 2026-04-03
 
