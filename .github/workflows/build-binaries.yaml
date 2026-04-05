@@ -32,9 +32,7 @@ jobs:
         run: npm run prebuild-linux
 
       - name: Build Linux artifacts
-        run: ./node_modules/.bin/electron-builder build -l AppImage deb rpm --x64
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: ./node_modules/.bin/electron-builder build -l AppImage deb rpm --x64 --publish never
 
       - uses: actions/upload-artifact@v4
         with:
@@ -61,9 +59,7 @@ jobs:
         run: npm install
 
       - name: Build Windows artifact
-        run: npm run build-windows
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npm run build-windows -- --publish never
 
       - uses: actions/upload-artifact@v4
         with:
@@ -89,9 +85,7 @@ jobs:
         run: npm install
 
       - name: Build macOS artifact
-        run: npm run build-darwin
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npm run build-darwin -- --publish never
 
       - uses: actions/upload-artifact@v4
         with:
