@@ -16,6 +16,10 @@ This continuation stays respectful to upstream:
 
 ![EdexUi-2026 Main Interface](docs/screenshots/main-interface.png)
 
+### Application Manager
+
+![EdexUi-2026 Application Manager](docs/screenshots/application-manager.png)
+
 ### Startup Screen
 
 ![EdexUi-2026 Startup Screen](docs/screenshots/startup-screen.png)
