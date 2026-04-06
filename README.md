@@ -2,11 +2,23 @@
 
 EdexUi-2026 is a maintained continuation of the original eDEX-UI project, updated for current Linux systems while preserving the classic sci-fi terminal experience.
 
+Latest public release: [v2026.1.1](https://github.com/Ali-A-2026/EdexUi-2026/releases/tag/v2026.1.1)
+
 This continuation stays respectful to upstream:
 
 - Original project creator: Gabriel "Squared" Saillard
 - Current maintainer of this continuation: Ali-A-Alwahed
 - Special thanks: Hyder6112, Ahmed Adnan
+
+## Screenshots
+
+### Main Interface
+
+![EdexUi-2026 Main Interface](docs/screenshots/main-interface.png)
+
+### Startup Screen
+
+![EdexUi-2026 Startup Screen](docs/screenshots/startup-screen.png)
 
 ## Highlights
 
