@@ -10,12 +10,17 @@ This repository is intended to stay respectful to upstream:
 
 ## Status
 
-- Terminal overlay color issue fixed
-- Original-style terminal appearance restored
-- Globe module restored and working again
-- Smoother rendering defaults enabled for the maintained build
-- Linux release artifacts supported: `.AppImage`, `.deb`, `.rpm`
-- Windows and macOS release automation prepared through GitHub Actions
+- Renamed and repackaged as `EdexUi-2026`
+- Added an integrated Application Manager utility
+- Hardened dependencies and verified `0 vulnerabilities` with `npm audit --omit=dev`
+- Updated dependencies for current Electron support
+- Improved Linux startup, screen-fit behavior, and terminal clarity
+- Improved the earth globe module and presentation
+- Cleaned release metadata, attribution, and GitHub-facing documentation
+- Added Vulkan optimizations
+- Improved overall responsiveness
+- Removed deprecated code paths
+- Improved robust cross-platform support
 
 ## Project Goals
 
@@ -24,9 +29,19 @@ This repository is intended to stay respectful to upstream:
 - Ship cleaner release metadata and safer defaults
 - Preserve original credit and GPL licensing
 
-## Local Development
+## How to run or build from source
 
 Install dependencies:
+
+```bash
+# Debian
+sudo apt install npm
+
+# Fedora
+sudo dnf install npm
+```
+
+Clone the repository and enter the project folder, then install dependencies:
 
 ```bash
 npm install
@@ -68,25 +83,13 @@ npm run build-darwin
 
 Note:
 
-- Linux artifacts can be built on Linux.
-- Windows and macOS artifacts are best produced by GitHub Actions on their native runners for the most reliable results.
+- Windows artifacts can be built on Linux as well.
+- macOS artifacts are best produced by GitHub Actions on native macOS runners for the most reliable results.
 - Public binaries are currently unsigned unless you add your own signing credentials.
-
-## Release Files
-
-Current release outputs are written to `dist/`.
-
-Expected release artifacts:
-
-- `EdexUi-2026-Linux-x86_64.AppImage`
-- `EdexUi-2026-linux-amd64.deb`
-- `EdexUi-2026-linux-x86_64.rpm`
-- `EdexUi-2026-Windows-x64.exe`
-- `EdexUi-2026-macOS-x64.dmg` when built on macOS CI
 
 ## Attribution
 
-EdexUi-2026 is derived from the original eDEX-UI project by Gabriel "Squared" Saillard and upstream contributors.
+EdexUi-2026 is a fork of the original eDEX-UI project by Gabriel "Squared" Saillard and upstream contributors.
 
 This continuation is maintained by Ali-A-Alwahed.
 
