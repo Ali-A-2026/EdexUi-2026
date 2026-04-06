@@ -1,20 +1,17 @@
 ---
 name: Bug report
-about: Something's broken or screaming error messages at you? Let's fix it.
+about: Report a bug, regression, packaging problem, or runtime issue.
 title: ''
-labels: investigation
+labels: bug
 
 ---
 
-<!--
-  The following (lightweight) template is made to avoid recurring questions in new bug reports
-  and to facilitate problem diagnosis. You are free to ignore it, but filling it correctly will
-  help a lot. Either way, thanks for taking the time to write a report.
-  Checked checkbox should look like this: [x]
--->
+## Summary
 
+Describe the problem clearly.
 
-## Technical information
+## Environment
+
 **Using version:**
  - [ ] `main` (running from the GitHub source branch)
  - [ ] `latest` (latest tagged EdexUi-2026 release)
@@ -25,14 +22,22 @@ labels: investigation
  - [ ] Windows
  - [ ] macOS
 
-**How comfortable you are with your system and/or IT in general:**
- - [ ] I'm kind of lost, honestly
- - [ ] I know what's up, I could help you run some commands or checks
- - [ ] My machine is fully under my control, tell me what you need
- - [ ] I attended [Defcon](https://defcon.org) last year
+Desktop session or distribution:
 
----
+## Steps To Reproduce
 
-## Problem
+1.
+2.
+3.
 
-(Write your report here. Screenshots and step-by-step instructions can help a lot!)
+## Expected Behavior
+
+What should have happened?
+
+## Actual Behavior
+
+What happened instead?
+
+## Logs Or Screenshots
+
+Add logs, screenshots, or crash details if available.

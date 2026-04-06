@@ -2,65 +2,65 @@
 
 EdexUi-2026 is a maintained continuation of the original eDEX-UI project, updated for current Linux systems while preserving the classic sci-fi terminal experience.
 
-This repository is intended to stay respectful to upstream:
+This continuation stays respectful to upstream:
 
 - Original project creator: Gabriel "Squared" Saillard
 - Current maintainer of this continuation: Ali-A-Alwahed
 - Special thanks: Hyder6112, Ahmed Adnan
 
-## Status
+## Highlights
 
-- Renamed and repackaged as `EdexUi-2026`
-- Added an integrated Application Manager utility
-- Hardened dependencies and verified `0 vulnerabilities` with `npm audit --omit=dev`
-- Updated dependencies for current Electron support
-- Improved Linux startup, screen-fit behavior, and terminal clarity
-- Improved the earth globe module and presentation
-- Cleaned release metadata, attribution, and GitHub-facing documentation
-- Added Vulkan optimizations
-- Improved overall responsiveness
-- Removed deprecated code paths
-- Improved robust cross-platform support
+- Maintained continuation of the original eDEX-UI experience
+- Updated for current Electron and modern Linux desktop environments
+- Improved terminal startup, screen-fit behavior, and runtime responsiveness
+- Restored and improved the world-view globe module
+- Packaged release outputs for `.AppImage`, `.deb`, `.rpm`, `.exe`, and `.dmg`
+- Public repository metadata, changelog, and security policy prepared for GitHub
 
-## Project Goals
+## Release Assets
 
-- Keep the original eDEX-UI feel
-- Maintain compatibility with modern Electron and Linux desktops
-- Ship cleaner release metadata and safer defaults
-- Preserve original credit and GPL licensing
+Published builds should be distributed through GitHub Releases rather than committed into the repository.
 
-## How to run or build from source
+Current release formats:
+
+| Platform | Format |
+| --- | --- |
+| Linux | `.AppImage`, `.deb`, `.rpm` |
+| Windows | `.exe` |
+| macOS | `.dmg` |
+
+## Run From Source
 
 Install dependencies:
 
 ```bash
-# Debian
+# Debian / Ubuntu
 sudo apt install npm
 
 # Fedora
 sudo dnf install npm
 ```
 
-Clone the repository and enter the project folder, then install dependencies:
+Install project packages:
 
 ```bash
 npm install
 cd src && npm install && cd ..
 ```
 
-Run the app normally:
+Run the app:
 
 ```bash
 npm start
 ```
 
-Run the app with the intro skipped:
+Skip the intro animation:
 
 ```bash
 npm run start:fast
 ```
 
-## Building Releases
+## Build Packages
 
 Linux:
 
@@ -81,11 +81,33 @@ macOS:
 npm run build-darwin
 ```
 
-Note:
+Notes:
 
-- Windows artifacts can be built on Linux as well.
-- macOS artifacts are best produced by GitHub Actions on native macOS runners for the most reliable results.
-- Public binaries are currently unsigned unless you add your own signing credentials.
+- Windows artifacts can also be built from Linux.
+- macOS artifacts are best produced by GitHub Actions on native macOS runners.
+- Public binaries are unsigned unless you add your own signing credentials.
+
+## Repository Layout
+
+- `src/` application source
+- `media/` icons and packaging assets
+- `.github/` workflows and community files
+- `dist/` local build output only
+
+## Project Goals
+
+- Preserve the original eDEX-UI feel
+- Maintain compatibility with modern Electron and Linux desktops
+- Ship cleaner release metadata and safer defaults
+- Preserve original credit and GPL licensing
+
+## Contributing
+
+Contributions, fixes, and packaging improvements are welcome. Please read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request.
+
+## Security
+
+Please review [SECURITY.md](SECURITY.md) for vulnerability reporting guidance.
 
 ## Attribution
 

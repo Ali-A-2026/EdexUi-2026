@@ -1,8 +1,5 @@
-blank_issues_enabled: true
+blank_issues_enabled: false
 contact_links:
-  - name: Feature Ideas
-    url: https://github.com/Ali-A-2026/EdexUi-2026/discussions/new?category=ideas
-    about: Share feature ideas for EdexUi-2026 here.
-  - name: Questions
-    url: https://github.com/Ali-A-2026/EdexUi-2026/discussions/new?category=questions
-    about: Ask usage or setup questions here.
+  - name: Security Policy
+    url: https://github.com/Ali-A-2026/EdexUi-2026/security/policy
+    about: Please follow the security policy for responsible vulnerability reporting.
