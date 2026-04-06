@@ -2,6 +2,9 @@
 
 EdexUi-2026 is a maintained continuation of the original eDEX-UI project, updated for current Linux systems while preserving the classic sci-fi terminal experience.
 
+[![Download Latest Release](https://img.shields.io/badge/Download-Latest%20Release-2ea043?style=for-the-badge)](https://github.com/Ali-A-2026/EdexUi-2026/releases/latest)
+[![Latest Release](https://img.shields.io/github/v/release/Ali-A-2026/EdexUi-2026?label=release)](https://github.com/Ali-A-2026/EdexUi-2026/releases/latest)
+
 Latest public release: [v2026.1.1](https://github.com/Ali-A-2026/EdexUi-2026/releases/tag/v2026.1.1)
 
 This continuation stays respectful to upstream:
