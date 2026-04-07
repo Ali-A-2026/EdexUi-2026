@@ -58,6 +58,37 @@ class FilesystemDisplay {
         this._noTracking = false;
         this._runNextTick = false;
         this._reading = false;
+        this._projectRepoUrl = "https://github.com/Ali-A-2026/EdexUi-2026";
+        this._fontExtensions = new Set([".woff2", ".woff", ".ttf", ".otf"]);
+        this._hiddenSettingsEntries = new Set([
+            "Cache",
+            "Code Cache",
+            "Cookies",
+            "Cookies-journal",
+            "Crashpad",
+            "DIPS",
+            "DawnGraphiteCache",
+            "DawnWebGPUCache",
+            "Dictionaries",
+            "GPUCache",
+            "Local Storage",
+            "Network Persistent State",
+            "Session Storage",
+            "Shared Dictionary",
+            "SharedStorage",
+            "SharedStorage-wal",
+            "Trust Tokens",
+            "Trust Tokens-journal",
+            "blob_storage",
+            "geoIPcache",
+            "hs",
+            "cracked.json",
+            "lastWindowState.json",
+            "versions_log.json"
+        ]);
+        this._isInternalConfigArtifact = entryName => {
+            return this._hiddenSettingsEntries.has(entryName);
+        };
 
         this._timer = setInterval(() => {
             if (this._runNextTick === true) {
@@ -174,6 +205,9 @@ class FilesystemDisplay {
                     this.setFailedState();
                 }
             });
+            if (tcwd === settingsDir) {
+                content = content.filter(file => !this._isInternalConfigArtifact(file));
+            }
 
             this.reCalculateDiskUsage(tcwd);
 
@@ -206,6 +240,7 @@ class FilesystemDisplay {
                         }
                         if (e.category === "dir" && tcwd === settingsDir && file === "themes") e.type="edex-themesDir";
                         if (e.category === "dir" && tcwd === settingsDir && file === "keyboards") e.type = "edex-kblayoutsDir";
+                        if (e.category === "dir" && tcwd === settingsDir && file === "fonts") e.type = "edex-fontsDir";
 
                         if (fstat.isSymbolicLink()) {
                             e.category = "symlink";
@@ -224,8 +259,10 @@ class FilesystemDisplay {
 
                     if (e.category === "file" && tcwd === themesDir && file.endsWith(".json")) e.type = "edex-theme";
                     if (e.category === "file" && tcwd === keyboardsDir && file.endsWith(".json")) e.type = "edex-kblayout";
+                    if (e.category === "file" && tcwd === fontsDir && this._fontExtensions.has(path.extname(file).toLowerCase())) e.type = "edex-font";
                     if (e.category === "file" && tcwd === settingsDir && file === "settings.json") e.type = "edex-settings";
                     if (e.category === "file" && tcwd === settingsDir && file === "shortcuts.json") e.type = "edex-shortcuts";
+                    if (e.category === "file" && tcwd === settingsDir && file === "Preferences") e.type = "edex-preferences";
 
                     if (file.startsWith(".")) e.hidden = true;
 
@@ -256,6 +293,15 @@ class FilesystemDisplay {
                 this.cwd.splice(1, 0, {
                     name: "Go up",
                     type: "up"
+                });
+            }
+            if (tcwd === settingsDir) {
+                this.cwd.splice(2, 0, {
+                    name: "EdexUi-2026 Repository",
+                    type: "edex-repo",
+                    category: "link",
+                    path: this._projectRepoUrl,
+                    hidden: false
                 });
             }
 
@@ -378,6 +424,17 @@ class FilesystemDisplay {
                 if (e.type === "edex-shortcuts") {
                     cmd = `window.openShortcutsHelp()`;
                 }
+                if (e.type === "edex-preferences") {
+                    cmd = `window.openSettings()`;
+                }
+                if (e.type === "edex-font") {
+                    cmd = `window.openFontPreview(${JSON.stringify(this.cwd[blockIndex].path)}, ${JSON.stringify(this.cwd[blockIndex].name)})`;
+                }
+                if (e.type === "edex-repo") {
+                    cmd = `window.openExternalUrl(${JSON.stringify(this.cwd[blockIndex].path)})`;
+                    cmdPrefix = '';
+                    cmdSuffix = '';
+                }
 
                 let icon = "";
                 let type = "";
@@ -413,9 +470,14 @@ class FilesystemDisplay {
                         type = "eDEX-UI keyboard layout";
                         break;
                     case "edex-settings":
+                    case "edex-preferences":
                     case "edex-shortcuts":
                         icon = this.edexIcons.settings;
                         type = "eDEX-UI config file";
+                        break;
+                    case "edex-font":
+                        icon = this.icons.font || this.icons.file;
+                        type = "eDEX-UI font asset";
                         break;
                     case "system":
                         icon = this.edexIcons.settings;
@@ -427,6 +489,14 @@ class FilesystemDisplay {
                     case "edex-kblayoutsDir":
                         icon = this.edexIcons.kblayoutsDir;
                         type = "eDEX-UI keyboards folder";
+                        break;
+                    case "edex-fontsDir":
+                        icon = this.edexIcons.themesDir;
+                        type = "eDEX-UI fonts folder";
+                        break;
+                    case "edex-repo":
+                        icon = this.icons.link || this.icons.symlink;
+                        type = "maintainer repository";
                         break;
                     default:
                         let iconName = this.fileIconsMatcher(e.name);

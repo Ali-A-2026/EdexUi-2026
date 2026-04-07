@@ -28,6 +28,86 @@ window._delay = ms => {
         setTimeout(resolve, ms);
     });
 };
+window._normalizeFontAssetName = name => {
+    if (typeof name !== "string") return "";
+    return name.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
+};
+window._resolveFontAssetPath = fontName => {
+    if (typeof fontName !== "string" || !fontName.trim()) return null;
+
+    const normalizedName = window._normalizeFontAssetName(fontName);
+    const supportedExtensions = [".woff2", ".woff", ".ttf", ".otf"];
+
+    for (const extension of supportedExtensions) {
+        const exactPath = path.join(fontsDir, normalizedName + extension);
+        if (fs.existsSync(exactPath)) return exactPath;
+    }
+
+    const availableFonts = fs.existsSync(fontsDir) ? fs.readdirSync(fontsDir) : [];
+    const matchingFont = availableFonts.find(file => {
+        const fileExtension = path.extname(file).toLowerCase();
+        if (!supportedExtensions.includes(fileExtension)) return false;
+        return window._normalizeFontAssetName(path.basename(file, fileExtension)) === normalizedName;
+    });
+
+    return matchingFont ? path.join(fontsDir, matchingFont) : null;
+};
+window._loadThemeFont = async fontName => {
+    const fontPath = window._resolveFontAssetPath(fontName);
+    if (!fontPath) return false;
+
+    try {
+        const fontFace = new FontFace(fontName, `url("${pathToFileURL(fontPath).href}")`);
+        const loadedFont = await fontFace.load();
+        document.fonts.add(loadedFont);
+        await document.fonts.load(`12px "${fontName}"`);
+        return true;
+    } catch (error) {
+        console.warn(`Failed to load theme font "${fontName}" from ${fontPath}:`, error);
+        return false;
+    }
+};
+window.openExternalPath = targetPath => {
+    electron.shell.openPath(targetPath);
+    electronWin.minimize();
+};
+window.openExternalUrl = targetUrl => {
+    electron.shell.openExternal(targetUrl);
+    electronWin.minimize();
+};
+window.openFontPreview = async (fontPath, fontName) => {
+    const previewFamily = `EdexPreview_${Date.now()}`;
+    let previewStyle = `font-family: "${window._escapeHtml(fontName)}", var(--font_main), sans-serif;`;
+
+    try {
+        const previewFace = new FontFace(previewFamily, `url("${pathToFileURL(fontPath).href}")`);
+        const loadedFace = await previewFace.load();
+        document.fonts.add(loadedFace);
+        previewStyle = `font-family: "${previewFamily}", "${window._escapeHtml(fontName)}", var(--font_main), sans-serif;`;
+    } catch (error) {
+        console.warn(`Could not preview font "${fontName}" from ${fontPath}:`, error);
+    }
+
+    window.keyboard.detach();
+    new Modal({
+        type: "custom",
+        title: `Font Preview <i>${window._escapeHtml(fontName)}</i>`,
+        html: `<div style="padding:1vh 0;">
+                <p><strong>File:</strong> ${window._escapeHtml(path.basename(fontPath))}</p>
+                <div style="${previewStyle} font-size:3.2vh; line-height:1.5; margin-top:1.5vh;">
+                    <p>THE QUICK BROWN FOX JUMPS OVER THE LAZY DOG</p>
+                    <p>the quick brown fox jumps over the lazy dog</p>
+                    <p>0123456789 !@#$%^&*() [] {} &lt;&gt; ? / \\</p>
+                </div>
+            </div>`,
+        buttons: [
+            {label: "Open Externally", action: `window.openExternalPath(${JSON.stringify(fontPath)})`}
+        ]
+    }, () => {
+        window.keyboard.attach();
+        window.term[window.currentTerm].term.focus();
+    });
+};
 
 // Initiate basic error handling
 window.onerror = (msg, path, line, col, error) => {
@@ -36,6 +116,7 @@ window.onerror = (msg, path, line, col, error) => {
 
 const path = require("path");
 const fs = require("fs");
+const { pathToFileURL } = require("url");
 const electron = require("electron");
 const remote = require("@electron/remote");
 const ipc = electron.ipcRenderer;
@@ -87,23 +168,17 @@ ipc.once("getKbOverride", (e, layout) => {
 ipc.send("getKbOverride");
 
 // Load UI theme
-window._loadTheme = theme => {
+window._loadTheme = async theme => {
 
     if (document.querySelector("style.theming")) {
         document.querySelector("style.theming").remove();
     }
 
-    // Load fonts
-    let mainFont = new FontFace(theme.cssvars.font_main, `url("${path.join(fontsDir, theme.cssvars.font_main.toLowerCase().replace(/ /g, '_')+'.woff2').replace(/\\/g, '/')}")`);
-    let lightFont = new FontFace(theme.cssvars.font_main_light, `url("${path.join(fontsDir, theme.cssvars.font_main_light.toLowerCase().replace(/ /g, '_')+'.woff2').replace(/\\/g, '/')}")`);
-    let termFont = new FontFace(theme.terminal.fontFamily, `url("${path.join(fontsDir, theme.terminal.fontFamily.toLowerCase().replace(/ /g, '_')+'.woff2').replace(/\\/g, '/')}")`);
-
-    document.fonts.add(mainFont);
-    document.fonts.load("12px "+theme.cssvars.font_main);
-    document.fonts.add(lightFont);
-    document.fonts.load("12px "+theme.cssvars.font_main_light);
-    document.fonts.add(termFont);
-    document.fonts.load("12px "+theme.terminal.fontFamily);
+    await Promise.allSettled([
+        window._loadThemeFont(theme.cssvars.font_main),
+        window._loadThemeFont(theme.cssvars.font_main_light),
+        window._loadThemeFont(theme.terminal.fontFamily)
+    ]);
 
     document.querySelector("head").innerHTML += `<style class="theming">
     :root {
@@ -889,7 +964,10 @@ window.openSettings = async () => {
     if (document.getElementById("settingsEditor")) return;
 
     // Build lists of available keyboards, themes, monitors
-    let keyboards, themes, monitors, ifaces;
+    let keyboards = "";
+    let themes = "";
+    let monitors = "";
+    let ifaces = `<option value="__AUTO__">Auto-detect active interface</option>`;
     fs.readdirSync(keyboardsDir).forEach(kb => {
         if (!kb.endsWith(".json")) return;
         kb = kb.replace(".json", "");
@@ -905,9 +983,14 @@ window.openSettings = async () => {
     for (let i = 0; i < electron.remote.screen.getAllDisplays().length; i++) {
         if (i !== window.settings.monitor) monitors += `<option>${i}</option>`;
     }
+    const currentIfaceValue = (typeof window.settings.iface === "string" && window.settings.iface.trim()) ? window.settings.iface : "__AUTO__";
+    const currentIfaceLabel = currentIfaceValue === "__AUTO__"
+        ? `Auto-detect (${window.mods.netstat.iface || "unavailable"})`
+        : currentIfaceValue;
     let nets = await window.si.networkInterfaces();
     nets.forEach(net => {
-        if (net.iface !== window.mods.netstat.iface) ifaces += `<option>${net.iface}</option>`;
+        if (!net.iface || net.iface === currentIfaceValue || net.iface === window.mods.netstat.iface) return;
+        ifaces += `<option>${net.iface}</option>`;
     });
 
     // Unlink the tactile keyboard from the terminal emulator to allow filling in the settings fields
@@ -1039,7 +1122,7 @@ window.openSettings = async () => {
                         <td>iface</td>
                         <td>Override the interface used for network monitoring</td>
                         <td><select id="settingsEditor-iface">
-                            <option>${window.mods.netstat.iface}</option>
+                            <option value="${currentIfaceValue}">${currentIfaceLabel}</option>
                             ${ifaces}
                         </select></td>
                     </tr>
@@ -1156,7 +1239,10 @@ window.writeFile = (path) => {
 };
 
 window.writeSettingsFile = () => {
+    const selectedIface = document.getElementById("settingsEditor-iface").value;
+
     window.settings = {
+        ...window.settings,
         shell: document.getElementById("settingsEditor-shell").value,
         shellArgs: document.getElementById("settingsEditor-shellArgs").value,
         cwd: document.getElementById("settingsEditor-cwd").value,
@@ -1174,9 +1260,8 @@ window.writeSettingsFile = () => {
         monitor: Number(document.getElementById("settingsEditor-monitor").value),
         nointro: (document.getElementById("settingsEditor-nointro").value === "true"),
         nocursor: (document.getElementById("settingsEditor-nocursor").value === "true"),
-        iface: document.getElementById("settingsEditor-iface").value,
+        iface: selectedIface === "__AUTO__" ? false : selectedIface,
         allowWindowed: (document.getElementById("settingsEditor-allowWindowed").value === "true"),
-        forceFullscreen: window.settings.forceFullscreen,
         keepGeometry: (document.getElementById("settingsEditor-keepGeometry").value === "true"),
         excludeThreadsFromToplist: (document.getElementById("settingsEditor-excludeThreadsFromToplist").value === "true"),
         hideDotfiles: (document.getElementById("settingsEditor-hideDotfiles").value === "true"),
@@ -1185,15 +1270,12 @@ window.writeSettingsFile = () => {
         enableVulkan: (document.getElementById("settingsEditor-enableVulkan").value === "true"),
         disableVulkan: (document.getElementById("settingsEditor-disableVulkan").value === "true"),
         optimizeVulkan: (document.getElementById("settingsEditor-optimizeVulkan").value === "true"),
-        termLigatures: !!window.settings.termLigatures,
-        disableGlobe: !!window.settings.disableGlobe,
-        disableUpdateCheck: !!window.settings.disableUpdateCheck,
         experimentalGlobeFeatures: (document.getElementById("settingsEditor-experimentalGlobeFeatures").value === "true"),
         experimentalFeatures: (document.getElementById("settingsEditor-experimentalFeatures").value === "true")
     };
 
     Object.keys(window.settings).forEach(key => {
-        if (window.settings[key] === "undefined") {
+        if (window.settings[key] === "undefined" || typeof window.settings[key] === "undefined") {
             delete window.settings[key];
         }
     });
