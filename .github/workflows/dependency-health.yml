@@ -1,0 +1,40 @@
+name: Dependency health
+
+on:
+  schedule:
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - "package.json"
+      - "package-lock.json"
+      - "src/package.json"
+      - "src/package-lock.json"
+      - ".github/workflows/dependency-health.yml"
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install root dependencies
+        run: npm install
+
+      - name: Audit root dependencies
+        run: npm audit --omit=dev
+
+      - name: Install app dependencies
+        run: cd src && npm install
+
+      - name: Audit app dependencies
+        run: cd src && npm audit --omit=dev
