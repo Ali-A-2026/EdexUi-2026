@@ -24,6 +24,12 @@ This continuation stays respectful to upstream:
 - Current maintainer of this continuation: Ali-A-Alwahed
 - Special thanks: Hyder6112, Ahmed Adnan
 
+## Upstream Relationship
+
+- Original upstream project: [GitSquared/eDEX-UI](https://github.com/GitSquared/edex-ui)
+- Maintained public continuation: [Ali-A-2026/EdexUi-2026](https://github.com/Ali-A-2026/EdexUi-2026)
+- Downloads, issue reports, and release tracking for this maintained continuation should use this repository.
+
 ## Screenshots
 
 ### Main Interface
@@ -134,6 +140,12 @@ Notes:
 ## Contributing
 
 Contributions, fixes, and packaging improvements are welcome. Please read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request.
+
+## Issues And Downloads
+
+- Download the maintained builds from the [latest release page](https://github.com/Ali-A-2026/EdexUi-2026/releases/latest).
+- Report bugs or packaging issues in the [issue tracker](https://github.com/Ali-A-2026/EdexUi-2026/issues).
+- Follow development and maintenance updates in this repository.
 
 ## Security
 
