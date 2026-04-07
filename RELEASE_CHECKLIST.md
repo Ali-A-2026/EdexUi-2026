@@ -55,6 +55,28 @@ Before uploading, confirm:
 3. URLs in `package.json`, `src/package.json`, and `src/classes/updateChecker.class.js` target the public repo
 4. Commit source files only; do not commit `dist/`, `node_modules/`, or `prebuild-src/`
 
+## Public Changelog Policy
+
+Keep public release notes and `CHANGELOG.md` focused on notable user-facing changes only.
+
+Mention these publicly:
+
+- major new features
+- critical bug fixes
+- security or dependency fixes
+- meaningful design or behavior changes
+- fixes that respond to public issues or reported regressions
+
+Do not add small internal maintenance by default:
+
+- silent polishing
+- local cleanup
+- explorer/file filtering cleanup
+- internal config handling cleanup
+- packaging prep that users do not directly notice
+
+If a small fix becomes release-critical or changes visible user behavior, then it can be promoted into the public changelog.
+
 ## Verification Summary
 
 - Terminal overlay issue fixed

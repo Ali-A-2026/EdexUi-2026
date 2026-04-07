@@ -2,6 +2,15 @@
 
 All notable changes to `EdexUi-2026` will be documented in this file.
 
+Only significant user-facing changes should be listed here:
+- major features
+- critical bug fixes
+- dependency or security fixes
+- notable design or behavior changes
+- fixes tied to reported public issues
+
+Small internal cleanup, packaging prep, or silent polish updates should stay out of the public changelog unless they materially change the release for users.
+
 This project is a maintained continuation of the original eDEX-UI codebase.
 It preserves upstream credit and remains licensed under `GPL-3.0-or-later`.
 
