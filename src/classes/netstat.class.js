@@ -27,6 +27,12 @@ class Netstat {
         this.offline = false;
         this.lastconn = {finished: false}; // Prevent geoip lookup attempt until maxminddb is loaded
         this.iface = null;
+        this.internalIPv4 = null;
+        this.publicIPv4 = null;
+        this.ipinfo = {
+            ip: null,
+            geo: null
+        };
         this.failedAttempts = {};
         this.runsBeforeGeoIPUpdate = 0;
 
@@ -95,11 +101,15 @@ class Netstat {
                 }
             }
 
-            if (net.ip4 !== this.internalIPv4) this.runsBeforeGeoIPUpdate = 0;
+            if (net.ip4 !== this.internalIPv4) {
+                this.runsBeforeGeoIPUpdate = 0;
+                this.publicIPv4 = null;
+            }
 
             this.iface = net.iface;
             this.internalIPv4 = net.ip4;
             document.getElementById("mod_netstat_iname").innerText = "Interface: "+net.iface;
+            document.querySelector("#mod_netstat_innercontainer > div:nth-child(2) > h2").innerHTML = window._escapeHtml(net.ip4);
 
             if (net.ip4 === "127.0.0.1") {
                 offline = true;
@@ -113,13 +123,11 @@ class Netstat {
                         res.on("end", () => {
                             try {
                                 let data = JSON.parse(rawData);
+                                this.publicIPv4 = data.ip;
                                 this.ipinfo = {
                                     ip: data.ip,
-                                    geo: this.geoLookup.get(data.ip).location
+                                    geo: this.geoLookup.get(data.ip)?.location || null
                                 };
-
-                                let ip = this.ipinfo.ip;
-                                document.querySelector("#mod_netstat_innercontainer > div:nth-child(2) > h2").innerHTML = window._escapeHtml(ip);
 
                                 this.runsBeforeGeoIPUpdate = 10;
                             } catch(e) {
@@ -144,7 +152,6 @@ class Netstat {
                 this.offline = offline;
                 if (offline) {
                     document.querySelector("#mod_netstat_innercontainer > div:first-child > h2").innerHTML = "OFFLINE";
-                    document.querySelector("#mod_netstat_innercontainer > div:nth-child(2) > h2").innerHTML = "--.--.--.--";
                     document.querySelector("#mod_netstat_innercontainer > div:nth-child(3) > h2").innerHTML = "--ms";
                 } else {
                     document.querySelector("#mod_netstat_innercontainer > div:first-child > h2").innerHTML = "ONLINE";

@@ -188,6 +188,10 @@ class LocationGlobe {
         }
     }
     async updateConOnlineConnection() {
+        if (!window.mods.netstat.ipinfo || !window.mods.netstat.ipinfo.geo) {
+            throw new Error("GeoIP data unavailable");
+        }
+
         let newgeo = window.mods.netstat.ipinfo.geo;
         newgeo.latitude = Math.round(newgeo.latitude*10000)/10000;
         newgeo.longitude = Math.round(newgeo.longitude*10000)/10000;
