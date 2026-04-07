@@ -6,7 +6,7 @@ This project is prepared for GitHub upload and cross-platform packaging.
 
 - Maintainer of this continuation: `Ali-A-Alwahed`
 - Original creator of eDEX-UI: `Gabriel "Squared" Saillard`
-- Special thanks: `Hyder61112`, `Ahmed Adnan`
+- Special thanks: `Hyder6112`, `Ahmed Adnan`
 
 These credits appear in:
 

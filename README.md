@@ -13,6 +13,7 @@ EdexUi-2026 is a maintained continuation of the original eDEX-UI project, update
 - [Screenshots](#screenshots)
 - [Run From Source](#run-from-source)
 - [Build Packages](#build-packages)
+- [Signing Guide](#signing)
 - [Contributing](#contributing)
 - [Security](#security)
 
@@ -122,6 +123,10 @@ Notes:
 - Windows artifacts can also be built from Linux.
 - macOS artifacts are best produced by GitHub Actions on native macOS runners.
 - Public binaries are unsigned unless you add your own signing credentials.
+
+## Signing
+
+For future trusted release signing, see [SIGNING.md](SIGNING.md).
 
 ## Repository Layout
 

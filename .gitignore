@@ -42,3 +42,7 @@ jspm_packages
 dist
 prebuild-src
 src/node_modules
+.env.signing
+.env.signing.local
+*.p12
+*.pfx
