@@ -73,6 +73,12 @@
       "category": "System",
       "icon": "media/linuxIcons"
     },
+    "rpm": {
+      "fpm": [
+        "--rpm-compression",
+        "gzip"
+      ]
+    },
     "appImage": {
       "artifactName": "EdexUi-2026-Linux-${arch}.AppImage"
     },

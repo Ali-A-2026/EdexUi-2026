@@ -58,6 +58,9 @@ jobs:
       - name: Install dependencies
         run: npm install
 
+      - name: Prepare packaged app sources
+        run: npm run prebuild-windows
+
       - name: Build Windows artifact
         run: npm run build-windows -- --publish never
 
@@ -83,6 +86,9 @@ jobs:
 
       - name: Install dependencies
         run: npm install
+
+      - name: Prepare packaged app sources
+        run: npm run prebuild-darwin
 
       - name: Build macOS artifact
         run: npm run build-darwin -- --publish never
