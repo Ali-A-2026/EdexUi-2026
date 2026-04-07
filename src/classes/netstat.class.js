@@ -66,6 +66,16 @@ class Netstat {
         window.si.networkInterfaces().then(async data => {
             let offline = false;
 
+            if (!Array.isArray(data) || data.length === 0) {
+                this.iface = null;
+                this.offline = true;
+                document.getElementById("mod_netstat_iname").innerText = "Interface: (offline)";
+                document.querySelector("#mod_netstat_innercontainer > div:first-child > h2").innerHTML = "OFFLINE";
+                document.querySelector("#mod_netstat_innercontainer > div:nth-child(2) > h2").innerHTML = "--.--.--.--";
+                document.querySelector("#mod_netstat_innercontainer > div:nth-child(3) > h2").innerHTML = "--ms";
+                return;
+            }
+
             let net = data[0];
             let netID = 0;
 
@@ -75,15 +85,17 @@ class Netstat {
                     if (data[netID]) {
                         net = data[netID];
                     } else {
-                        // No detected interface has the custom iface name, fallback to automatic detection on next loop
+                        // Reset stale custom iface and continue with automatic detection now.
                         window.settings.iface = false;
-                        return false;
+                        net = data[0];
+                        netID = 0;
+                        break;
                     }
                 }
             } else {
                 // Find the first external, IPv4 connected networkInterface that has a MAC address set
 
-                while (net.operstate !== "up" || net.internal === true || net.ip4 === "" || net.mac === "") {
+                while (net.operstate !== "up" || net.internal === true || net.ip4 === "") {
                     netID++;
                     if (data[netID]) {
                         net = data[netID];
