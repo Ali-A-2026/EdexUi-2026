@@ -5,6 +5,22 @@
         <meta http-equiv="Content-Security-Policy" content="default-src file: 'unsafe-inline'; img-src file: data:; media-src file:; connect-src ws: file:">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>EdexUi-2026</title>
+        <style>
+            html, body {
+                margin: 0;
+                width: 100%;
+                height: 100%;
+                overflow: hidden;
+                background: #000000 !important;
+                background-color: #000000 !important;
+            }
+            body,
+            body.solidBackground,
+            #boot_screen {
+                background: #000000 !important;
+                background-color: #000000 !important;
+            }
+        </style>
 
         <!-- Load dependency css -->
         <link rel="stylesheet" href="node_modules/augmented-ui/augmented.css" />
@@ -55,8 +71,8 @@
         <!-- Load extra classes -->
         <script src="classes/audiofx.class.js"></script>
     </head>
-    <body class="solidBackground">
-        <section id="boot_screen">
+    <body class="solidBackground" style="margin:0;width:100%;height:100%;overflow:hidden;background:#000000 !important;background-color:#000000 !important;">
+        <section id="boot_screen" style="position:fixed;inset:0;width:100%;height:100%;margin:0;padding:2vh 2.4vh;overflow:hidden;display:flex;flex-direction:column;background:#000000 !important;background-color:#000000 !important;">
         </section>
 
         <script src="_renderer.js"></script>

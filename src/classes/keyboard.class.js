@@ -138,7 +138,7 @@ class Keyboard {
                         });
 
                         // Keep focus on the terminal
-                        if (window.keyboard.linkedToTerm) window.term[window.currentTerm].term.focus();
+                        if (window.keyboard.linkedToTerm) this.focusActiveTerminal();
                         if (this.container.dataset.passwordMode == "false")
                             window.audioManager.granted.play();
                         e.preventDefault();
@@ -179,7 +179,7 @@ class Keyboard {
                         }
 
                         // Keep focus on the terminal
-                        if (window.keyboard.linkedToTerm) window.term[window.currentTerm].term.focus();
+                        if (window.keyboard.linkedToTerm) this.focusActiveTerminal();
                         if(this.container.dataset.passwordMode == "false")
                             window.audioManager.stdin.play();
                         e.preventDefault();
@@ -357,6 +357,34 @@ class Keyboard {
             });
         });
     }
+    getActiveTerminal() {
+        if (typeof window === "undefined") return null;
+        if (!window.term || typeof window.currentTerm === "undefined") return null;
+
+        return window.term[window.currentTerm] || null;
+    }
+    focusActiveTerminal() {
+        const activeTerm = this.getActiveTerminal();
+        if (activeTerm && activeTerm.term && typeof activeTerm.term.focus === "function") {
+            activeTerm.term.focus();
+        }
+    }
+    writeToActiveTerminal(cmd, linebreak = false) {
+        const activeTerm = this.getActiveTerminal();
+        if (!activeTerm) return false;
+
+        if (linebreak && typeof activeTerm.writelr === "function") {
+            activeTerm.writelr(cmd);
+            return true;
+        }
+
+        if (typeof activeTerm.write === "function") {
+            activeTerm.write(cmd);
+            return true;
+        }
+
+        return false;
+    }
     pressKey(key) {
         let cmd = key.dataset.cmd || "";
 
@@ -386,8 +414,7 @@ class Keyboard {
                     window.useAppShortcut(cut.action);
                     shortcutsTriggered = true;
                 } else if (cut.type === "shell") {
-                    let fn = (cut.linebreak) ? writelr : write;
-                    window.term[window.currentTerm][fn](cut.action);
+                    this.writeToActiveTerminal(cut.action, !!cut.linebreak);
                 } else {
                     console.warn(`${cut.trigger} has unknown type`);
                 }
@@ -517,7 +544,7 @@ class Keyboard {
 
         if (cmd === "\n") {
             if (window.keyboard.linkedToTerm) {
-                window.term[window.currentTerm].writelr("");
+                this.writeToActiveTerminal("", true);
             } else {
                 document.activeElement.dispatchEvent(new CustomEvent("change", {detail: "enter" }));
             }
@@ -526,7 +553,7 @@ class Keyboard {
 
 
         if (window.keyboard.linkedToTerm) {
-            window.term[window.currentTerm].write(cmd);
+            this.writeToActiveTerminal(cmd, false);
         } else {
             let isDelete = false;
             if (typeof document.activeElement.value !== "undefined") {

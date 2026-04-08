@@ -4,7 +4,7 @@ class AudioManager {
         const {Howl, Howler} = require("howler");
 
         if (window.settings.audio === true) {
-            if(window.settings.disableFeedbackAudio === false) {
+            if (window.settings.disableFeedbackAudio !== true) {
                 this.stdout = new Howl({
                     src: [path.join(__dirname, "assets", "audio", "stdout.wav")],
                     volume: 0.4

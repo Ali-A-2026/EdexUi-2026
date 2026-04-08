@@ -6,6 +6,7 @@ class FilesystemDisplay {
         const path = require("path");
         this.cwd = [];
         this.cwd_path = null;
+        this.rootPath = opts.rootPath ? path.resolve(opts.rootPath) : null;
         this.iconcolor = `rgb(${window.theme.r}, ${window.theme.g}, ${window.theme.b})`;
         this._formatBytes = (a,b) => {if(0==a)return"0 Bytes";var c=1024,d=b||2,e=["Bytes","KB","MB","GB","TB","PB","EB","ZB","YB"],f=Math.floor(Math.log(a)/Math.log(c));return parseFloat((a/Math.pow(c,f)).toFixed(d))+" "+e[f]};
         this.fileIconsMatcher = require("./assets/misc/file-icons-match.js");
@@ -40,7 +41,7 @@ class FilesystemDisplay {
 
         const container = document.getElementById(opts.parentId);
         container.innerHTML = `
-            <h3 class="title"><p>FILESYSTEM</p><p id="fs_disp_title_dir"></p></h3>
+            <h3 class="title"><p>SYSTEM</p><p id="fs_disp_title_dir"></p></h3>
             <div id="fs_disp_container">
             </div>
             <div id="fs_space_bar">
@@ -60,6 +61,14 @@ class FilesystemDisplay {
         this._reading = false;
         this._projectRepoUrl = "https://github.com/Ali-A-2026/EdexUi-2026";
         this._fontExtensions = new Set([".woff2", ".woff", ".ttf", ".otf"]);
+        this._hiddenKeyboardLayouts = new Set([
+            "en-WORKMAN.json"
+        ]);
+        this._visibleSettingsEntries = new Set([
+            "settings.json",
+            "themes",
+            "keyboards"
+        ]);
         this._hiddenSettingsEntries = new Set([
             "Cache",
             "Code Cache",
@@ -84,10 +93,23 @@ class FilesystemDisplay {
             "hs",
             "cracked.json",
             "lastWindowState.json",
+            "Preferences",
+            "SingletonCookie",
+            "SingletonLock",
+            "SingletonSocket",
             "versions_log.json"
         ]);
         this._isInternalConfigArtifact = entryName => {
             return this._hiddenSettingsEntries.has(entryName);
+        };
+        this._resolveWithinRoot = targetPath => {
+            if (!this.rootPath) return path.resolve(targetPath);
+
+            const resolved = path.resolve(targetPath);
+            if (resolved === this.rootPath || resolved.startsWith(this.rootPath + path.sep)) {
+                return resolved;
+            }
+            return this.rootPath;
         };
 
         this._timer = setInterval(() => {
@@ -119,13 +141,13 @@ class FilesystemDisplay {
         this.setFailedState = () => {
             this.failed = true;
             container.innerHTML = `
-            <h3 class="title"><p>FILESYSTEM</p><p id="fs_disp_title_dir">EXECUTION FAILED</p></h3>
+            <h3 class="title"><p>SYSTEM</p><p id="fs_disp_title_dir">EXECUTION FAILED</p></h3>
             <h2 id="fs_disp_error">CANNOT ACCESS CURRENT WORKING DIRECTORY</h2>`;
         };
 
         this.followTab = () => {
             // Don't follow tabs when running in detached mode, see #432
-            if (this._noTracking) return false;
+            if (this._noTracking || this.rootPath) return false;
 
             let num = window.currentTerm;
 
@@ -189,9 +211,12 @@ class FilesystemDisplay {
             this.filesContainer.setAttribute("class", "");
             this.filesContainer.innerHTML = "";
             if (this._noTracking) {
-                document.querySelector("section#filesystem > h3.title > p:first-of-type").innerText = "FILESYSTEM - TRACKING FAILED, RUNNING DETACHED FROM TTY";
+                document.querySelector("section#filesystem > h3.title > p:first-of-type").innerText = "SYSTEM - TRACKING FAILED, RUNNING DETACHED FROM TTY";
             }
 
+            if (this.rootPath) {
+                dir = this._resolveWithinRoot(dir || this.rootPath);
+            }
             if (process.platform === "win32" && dir.endsWith(":")) dir = dir+"\\";
             let tcwd = dir;
             let content = await this._asyncFSwrapper.readdir(tcwd).catch(err => {
@@ -206,7 +231,10 @@ class FilesystemDisplay {
                 }
             });
             if (tcwd === settingsDir) {
-                content = content.filter(file => !this._isInternalConfigArtifact(file));
+                content = content.filter(file => this._visibleSettingsEntries.has(file) && !this._isInternalConfigArtifact(file));
+            }
+            if (tcwd === keyboardsDir) {
+                content = content.filter(file => !this._hiddenKeyboardLayouts.has(file));
             }
 
             this.reCalculateDiskUsage(tcwd);
@@ -240,8 +268,6 @@ class FilesystemDisplay {
                         }
                         if (e.category === "dir" && tcwd === settingsDir && file === "themes") e.type="edex-themesDir";
                         if (e.category === "dir" && tcwd === settingsDir && file === "keyboards") e.type = "edex-kblayoutsDir";
-                        if (e.category === "dir" && tcwd === settingsDir && file === "fonts") e.type = "edex-fontsDir";
-
                         if (fstat.isSymbolicLink()) {
                             e.category = "symlink";
                             e.type = "symlink";
@@ -259,10 +285,7 @@ class FilesystemDisplay {
 
                     if (e.category === "file" && tcwd === themesDir && file.endsWith(".json")) e.type = "edex-theme";
                     if (e.category === "file" && tcwd === keyboardsDir && file.endsWith(".json")) e.type = "edex-kblayout";
-                    if (e.category === "file" && tcwd === fontsDir && this._fontExtensions.has(path.extname(file).toLowerCase())) e.type = "edex-font";
                     if (e.category === "file" && tcwd === settingsDir && file === "settings.json") e.type = "edex-settings";
-                    if (e.category === "file" && tcwd === settingsDir && file === "shortcuts.json") e.type = "edex-shortcuts";
-                    if (e.category === "file" && tcwd === settingsDir && file === "Preferences") e.type = "edex-preferences";
 
                     if (file.startsWith(".")) e.hidden = true;
 
@@ -284,24 +307,38 @@ class FilesystemDisplay {
                 return (ordering[a.category] - ordering[b.category] || a.name.localeCompare(b.name));
             });
 
-            this.cwd.splice(0, 0, {
-                name: "Show disks",
-                type: "showDisks"
-            });
+            if (!this.rootPath) {
+                this.cwd.splice(0, 0, {
+                    name: "Show disks",
+                    type: "showDisks"
+                });
+            }
 
-            if (tcwd !== "/" && /^[A-Z]:\\$/i.test(tcwd) === false) {
-                this.cwd.splice(1, 0, {
+            if (tcwd !== "/" && /^[A-Z]:\\$/i.test(tcwd) === false && (!this.rootPath || tcwd !== this.rootPath)) {
+                this.cwd.splice(this.rootPath ? 0 : 1, 0, {
                     name: "Go up",
                     type: "up"
                 });
             }
             if (tcwd === settingsDir) {
-                this.cwd.splice(2, 0, {
-                    name: "EdexUi-2026 Repository",
+                this.cwd.splice(this.rootPath ? 0 : 2, 0, {
+                    name: "Project Repo",
                     type: "edex-repo",
                     category: "link",
                     path: this._projectRepoUrl,
                     hidden: false
+                });
+
+                const preferredOrder = new Map([
+                    ["edex-settings", 0],
+                    ["edex-themesDir", 1],
+                    ["edex-kblayoutsDir", 2],
+                    ["edex-repo", 3]
+                ]);
+                this.cwd.sort((a, b) => {
+                    const aOrder = preferredOrder.has(a.type) ? preferredOrder.get(a.type) : 99;
+                    const bOrder = preferredOrder.has(b.type) ? preferredOrder.get(b.type) : 99;
+                    return aOrder - bOrder || a.name.localeCompare(b.name);
                 });
             }
 
@@ -366,7 +403,7 @@ class FilesystemDisplay {
 
                 let cmd;
 
-                if (!this._noTracking) {
+                if (!this._noTracking && !this.rootPath) {
                     if (e.type === "dir" || e.type.endsWith("Dir")) {
                         cmd = `window.term[window.currentTerm].writelr("cd \\""+fsDisp.cwd[${blockIndex}].name+"\\"")`;
                     } else if (e.type === "up") {
@@ -384,7 +421,7 @@ class FilesystemDisplay {
                     if (e.type === "dir" || e.type.endsWith("Dir")) {
                         cmd = `window.fsDisp.readFS(fsDisp.cwd[${blockIndex}].path)`;
                     } else if (e.type === "up") {
-                        cmd = `window.fsDisp.readFS(path.resolve(window.fsDisp.dirpath, ".."))`;
+                        cmd = `window.fsDisp.readFS(window.fsDisp.rootPath ? window.fsDisp._resolveWithinRoot(path.resolve(window.fsDisp.dirpath, "..")) : path.resolve(window.fsDisp.dirpath, ".."))`;
                     } else if (e.type === "disk" || e.type === "rom" || e.type === "usb") {
                         cmd = `window.fsDisp.readFS("${e.path.replace(/\\/g, '')}")`;
                     } else {
@@ -421,14 +458,10 @@ class FilesystemDisplay {
                 if (e.type === "edex-settings") {
                     cmd = `window.openSettings()`;
                 }
-                if (e.type === "edex-shortcuts") {
-                    cmd = `window.openShortcutsHelp()`;
-                }
-                if (e.type === "edex-preferences") {
-                    cmd = `window.openSettings()`;
-                }
-                if (e.type === "edex-font") {
-                    cmd = `window.openFontPreview(${JSON.stringify(this.cwd[blockIndex].path)}, ${JSON.stringify(this.cwd[blockIndex].name)})`;
+                if (e.type === "system-file-explorer") {
+                    cmd = `window.openSystemFileExplorer()`;
+                    cmdPrefix = '';
+                    cmdSuffix = '';
                 }
                 if (e.type === "edex-repo") {
                     cmd = `window.openExternalUrl(${JSON.stringify(this.cwd[blockIndex].path)})`;
@@ -470,14 +503,8 @@ class FilesystemDisplay {
                         type = "eDEX-UI keyboard layout";
                         break;
                     case "edex-settings":
-                    case "edex-preferences":
-                    case "edex-shortcuts":
                         icon = this.edexIcons.settings;
-                        type = "eDEX-UI config file";
-                        break;
-                    case "edex-font":
-                        icon = this.icons.font || this.icons.file;
-                        type = "eDEX-UI font asset";
+                        type = "eDEX-UI settings";
                         break;
                     case "system":
                         icon = this.edexIcons.settings;
@@ -490,13 +517,13 @@ class FilesystemDisplay {
                         icon = this.edexIcons.kblayoutsDir;
                         type = "eDEX-UI keyboards folder";
                         break;
-                    case "edex-fontsDir":
-                        icon = this.edexIcons.themesDir;
-                        type = "eDEX-UI fonts folder";
-                        break;
                     case "edex-repo":
                         icon = this.icons.link || this.icons.symlink;
                         type = "maintainer repository";
+                        break;
+                    case "system-file-explorer":
+                        icon = this.icons.dir || this.icons.folder || this.icons.file;
+                        type = "system file explorer";
                         break;
                     default:
                         let iconName = this.fileIconsMatcher(e.name);
@@ -612,8 +639,8 @@ class FilesystemDisplay {
         // See #365
         // ...except if we're hot-reloading, in which case this can mess up the rendering
         // See #392
-        if (window.performance.navigation.type === 0) {
-            this.readFS(window.term[window.currentTerm].cwd || window.settings.cwd);
+        if (this.rootPath || window.performance.navigation.type === 0) {
+            this.readFS(this.rootPath || window.term[window.currentTerm].cwd || window.settings.cwd);
         }
 
         this.openFile = (name, path, type) => { //Might add text formatting at some point, not now though - Surge

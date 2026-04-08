@@ -2,9 +2,13 @@ div#mod_toplist {
     border-top: 0.092vh solid rgba(var(--color_r), var(--color_g), var(--color_b), 0.3);
     font-family: var(--font_main_light);
     letter-spacing: 0.092vh;
-    padding: 0.645vh 0vh;
+    padding: 0.645vh 0vh 0.25vh;
     display: flex;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
+    flex-direction: column;
+    position: relative;
+    flex: 1 1 auto;
+    min-height: 0;
 }
 
 div#mod_toplist::before {
@@ -24,16 +28,20 @@ div#mod_toplist:hover {
 div#mod_toplist::after {
     content: "";
     border-right: 0.092vh solid rgba(var(--color_r), var(--color_g), var(--color_b), 0.3);
-    position: relative;
-    right: -15.4vw;
-    top: -12.7vh;
+    position: absolute;
+    right: -0.092vh;
+    top: -1.111vh;
     height: 0.833vh;
+}
+
+div#mod_toplist > br {
+    display: none;
 }
 
 div#mod_toplist h1 {
     font-size: 1.48vh;
     margin: 0vh;
-    margin-bottom: -1vh;
+    margin-bottom: 0;
     width: 97%;
     padding-left: 0.5vh;
 }
@@ -45,15 +53,17 @@ div#mod_toplist i {
     text-align: right;
     display: inline-block;
     position: relative;
-    bottom: 1.6vh;
+    bottom: 0.15vh;
     width: 100%;
 }
 
 table#mod_toplist_table {
     margin: 0px;
-    margin-top: 0.2vh;
+    margin-top: 0.45vh;
     width: 99%;
     padding-left: 0.5vh;
+    flex: 1 1 auto;
+    align-self: stretch;
 }
 
 table#mod_toplist_table td {

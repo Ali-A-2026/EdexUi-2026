@@ -75,6 +75,31 @@ window.openExternalUrl = targetUrl => {
     electron.shell.openExternal(targetUrl);
     electronWin.minimize();
 };
+window.hideReleaseUpdateNotice = () => {
+    const notice = document.getElementById("main_shell_update_notice");
+    if (!notice) return;
+    notice.classList.remove("visible");
+    notice.innerHTML = "";
+};
+window.showReleaseUpdateNotice = release => {
+    const notice = document.getElementById("main_shell_update_notice");
+    if (!notice || !release) return;
+
+    const safeTag = window._escapeHtml(release.tag_name || "new release");
+    const safeName = window._escapeHtml(release.name || release.tag_name || "Latest release");
+    const releaseUrl = release.html_url || `https://github.com/Ali-A-2026/EdexUi-2026/releases/latest`;
+
+    notice.innerHTML = `
+        <span>NEW RELEASE</span>
+        <strong>${safeTag}</strong>
+        <small>${safeName}</small>
+        <div>
+            <button onclick="window.openExternalUrl(${JSON.stringify(releaseUrl)})">UPDATE</button>
+            <button onclick="window.hideReleaseUpdateNotice()">CANCEL</button>
+        </div>
+    `;
+    notice.classList.add("visible");
+};
 window.openFontPreview = async (fontPath, fontName) => {
     const previewFamily = `EdexPreview_${Date.now()}`;
     let previewStyle = `font-family: "${window._escapeHtml(fontName)}", var(--font_main), sans-serif;`;
@@ -116,11 +141,34 @@ window.onerror = (msg, path, line, col, error) => {
 
 const path = require("path");
 const fs = require("fs");
+const childProcess = require("child_process");
 const { pathToFileURL } = require("url");
 const electron = require("electron");
 const remote = require("@electron/remote");
 const ipc = electron.ipcRenderer;
 electron.remote = remote;
+
+window.frontendPaintNotified = false;
+window.notifyFrontendPaint = () => {
+    if (window.frontendPaintNotified) return;
+    window.frontendPaintNotified = true;
+    ipc.send("frontend-painted");
+};
+window.notifyFrontendReady = () => {
+    ipc.send("frontend-ready");
+    if (typeof window.requestAnimationFrame === "function") {
+        window.requestAnimationFrame(() => {
+            window.requestAnimationFrame(window.notifyFrontendPaint);
+        });
+    } else {
+        setTimeout(window.notifyFrontendPaint, 0);
+    }
+};
+if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", window.notifyFrontendReady, { once: true });
+} else {
+    window.notifyFrontendReady();
+}
 
 const settingsDir = remote.app.getPath("userData");
 const themesDir = path.join(settingsDir, "themes");
@@ -129,11 +177,22 @@ const fontsDir = path.join(settingsDir, "fonts");
 const settingsFile = path.join(settingsDir, "settings.json");
 const shortcutsFile = path.join(settingsDir, "shortcuts.json");
 const lastWindowStateFile = path.join(settingsDir, "lastWindowState.json");
+const unsupportedKeyboardLayouts = new Set([
+    "en-WORKMAN"
+]);
 
 // Load config
 window.settings = require(settingsFile);
 window.shortcuts = require(shortcutsFile);
 window.lastWindowState = require(lastWindowStateFile);
+window._getSafeKeyboardLayout = layoutName => {
+    const requestedLayout = typeof layoutName === "string" && layoutName.trim() ? layoutName.trim() : "en-US";
+    if (unsupportedKeyboardLayouts.has(requestedLayout)) return "en-US";
+
+    const layoutPath = path.join(keyboardsDir, `${requestedLayout}.json`);
+    return fs.existsSync(layoutPath) ? requestedLayout : "en-US";
+};
+window.settings.keyboard = window._getSafeKeyboardLayout(window.settings.keyboard);
 
 // Load CLI parameters
 if (remote.process.argv.includes("--nointro")) {
@@ -360,41 +419,37 @@ async function displayTitleScreen() {
     bootScreen.innerHTML = "";
     window.audioManager.theme.play();
 
-    await _delay(400);
+    await _delay(450);
 
     document.body.setAttribute("class", "");
     bootScreen.setAttribute("class", "center");
     bootScreen.innerHTML = "<h1>EdexUi-2026</h1>";
     let title = document.querySelector("section > h1");
 
-    await _delay(200);
+    await _delay(220);
 
     document.body.setAttribute("class", "solidBackground");
 
-    await _delay(100);
+    await _delay(120);
 
     title.setAttribute("style", `background-color: rgb(${window.theme.r}, ${window.theme.g}, ${window.theme.b});border-bottom: 5px solid rgb(${window.theme.r}, ${window.theme.g}, ${window.theme.b});`);
 
-    await _delay(300);
+    await _delay(340);
 
     title.setAttribute("style", `border: 5px solid rgb(${window.theme.r}, ${window.theme.g}, ${window.theme.b});`);
 
-    await _delay(100);
+    await _delay(120);
 
     title.setAttribute("style", "");
     title.setAttribute("class", "glitch");
 
-    await _delay(500);
+    await _delay(540);
 
     document.body.setAttribute("class", "");
     title.setAttribute("class", "");
     title.setAttribute("style", `border: 5px solid rgb(${window.theme.r}, ${window.theme.g}, ${window.theme.b});`);
 
-    await _delay(1000);
-    if (window.term) {
-        bootScreen.remove();
-        return true;
-    }
+    await _delay(1100);
     initGraphicalErrorHandling();
     initSystemInformationProxy();
     waitForFonts().then(() => {
@@ -449,7 +504,7 @@ async function initUI() {
     <section id="keyboard" style="opacity:0;">
     </section>`;
     window.keyboard = new Keyboard({
-        layout: path.join(keyboardsDir, settings.keyboard+".json"),
+        layout: path.join(keyboardsDir, window._getSafeKeyboardLayout(settings.keyboard)+".json"),
         container: "keyboard"
     });
 
@@ -536,17 +591,23 @@ async function initUI() {
     let shellContainer = document.getElementById("main_shell");
     shellContainer.innerHTML += `
         <div id="shell_quick_actions">
-            <button id="shell_apps_button" onclick="window.openAppManager();">
+            <button id="shell_files_button" onclick="window.toggleSystemExplorer();">
+                <span>SYSTEM FILES</span>
+                <strong>OPEN FILE EXPLORER</strong>
+            </button>
+            <button id="shell_apps_button" onclick="window.toggleAppManager();">
                 <span>APP MANAGER</span>
                 <strong>OPEN INSTALLED APPS</strong>
             </button>
         </div>
+        <div id="main_shell_update_notice"></div>
+        <div id="shell_panel_overlay"></div>
         <ul id="main_shell_tabs">
-            <li id="shell_tab0" onclick="window.focusShellTab(0);" class="active"><p>EdexUi-2026</p></li>
-            <li id="shell_tab1" onclick="window.focusShellTab(1);"><p>EMPTY</p></li>
-            <li id="shell_tab2" onclick="window.focusShellTab(2);"><p>EMPTY</p></li>
-            <li id="shell_tab3" onclick="window.focusShellTab(3);"><p>EMPTY</p></li>
-            <li id="shell_tab4" onclick="window.focusShellTab(4);"><p>EMPTY</p></li>
+            <li id="shell_tab0" onclick="window.focusShellTab(0);" class="active"><p>Main</p></li>
+            <li id="shell_tab1" onclick="window.focusShellTab(1);"><p>1</p></li>
+            <li id="shell_tab2" onclick="window.focusShellTab(2);"><p>2</p></li>
+            <li id="shell_tab3" onclick="window.focusShellTab(3);"><p>3</p></li>
+            <li id="shell_tab4" onclick="window.focusShellTab(4);"><p>4</p></li>
         </ul>
         <div id="main_shell_innercontainer">
             <pre id="terminal0" class="active"></pre>
@@ -555,6 +616,9 @@ async function initUI() {
             <pre id="terminal3"></pre>
             <pre id="terminal4"></pre>
         </div>`;
+    if (typeof window.updateSystemExplorerButton === "function") {
+        window.updateSystemExplorerButton();
+    }
     window.term = {
         0: new Terminal({
             role: "client",
@@ -566,6 +630,15 @@ async function initUI() {
         window.term[i] = false;
     }
     window.currentTerm = 0;
+    window.getShellTabLabel = number => (number === 0 ? "Main" : String(number));
+    window.setShellTabLabel = number => {
+        const tab = document.getElementById(`shell_tab${number}`);
+        if (!tab) return;
+        tab.innerHTML = `<p>${window.getShellTabLabel(number)}</p>`;
+    };
+    for (let tabNumber = 0; tabNumber <= 4; tabNumber++) {
+        window.setShellTabLabel(tabNumber);
+    }
     window.termLoading = {};
     window.pendingTermActivation = {};
     window.prewarmShellTabsPromise = null;
@@ -573,8 +646,8 @@ async function initUI() {
     if (typeof window.term[0].enableHardwareAcceleration === "function") {
         window.term[0].enableHardwareAcceleration();
     }
-    window.term[0].onprocesschange = p => {
-        document.getElementById("shell_tab0").innerHTML = `<p>MAIN - ${p}</p>`;
+    window.term[0].onprocesschange = () => {
+        window.setShellTabLabel(0);
     };
     const startShellTabPrewarm = () => {
         if (window.shellTabsPrewarmStarted) return;
@@ -602,7 +675,8 @@ async function initUI() {
     await _delay(100);
 
     window.fsDisp = new FilesystemDisplay({
-        parentId: "filesystem"
+        parentId: "filesystem",
+        rootPath: settingsDir
     });
 
     await _delay(200);
@@ -633,6 +707,14 @@ async function initUI() {
             window.updateCheck = new UpdateChecker();
         }, 8000);
     }
+
+    setTimeout(() => {
+        window.primeAppManagerIndex();
+        window.primeSystemExplorerIndex();
+        if (typeof window.warmSettingsEditorCache === "function") {
+            window.warmSettingsEditorCache();
+        }
+    }, 250);
 }
 
 window.themeChanger = theme => {
@@ -643,21 +725,408 @@ window.themeChanger = theme => {
 };
 
 window.remakeKeyboard = layout => {
+    const safeLayout = window._getSafeKeyboardLayout(layout || settings.keyboard);
     document.getElementById("keyboard").innerHTML = "";
     window.keyboard = new Keyboard({
-        layout: path.join(keyboardsDir, layout+".json" || settings.keyboard+".json"),
+        layout: path.join(keyboardsDir, safeLayout+".json"),
         container: "keyboard"
     });
-    ipc.send("setKbOverride", layout);
+    window.settings.keyboard = safeLayout;
+    ipc.send("setKbOverride", safeLayout);
 };
 
 window.appManager = {
     apps: [],
     filteredApps: [],
     selectedAppId: null,
-    modalId: null
+    modalId: null,
+    installedAppsLoaded: false,
+    launchResultBound: false,
+    loading: false,
+    loadingPromise: null
 };
+window.appManagerSearchTimer = null;
+window.primeAppManagerIndex = () => {
+    if (window.appManager.installedAppsLoaded || window.appManager.loadingPromise) return;
 
+    window.appManager.loading = true;
+    window.appManager.loadingPromise = new Promise((resolve, reject) => {
+        ipc.once("appManager:installedApps", (_event, payload) => {
+            window.appManager.loading = false;
+            window.appManager.loadingPromise = null;
+            if (payload && payload.error) {
+                console.warn("App Manager preload failed:", payload.error);
+                reject(new Error(payload.error));
+                return;
+            }
+            window.appManager.apps = payload || [];
+            window.appManager.installedAppsLoaded = true;
+            resolve(window.appManager.apps);
+        });
+        ipc.send("appManager:getInstalledApps");
+    });
+};
+window.updateAppManagerSearch = query => {
+    if (window.appManagerSearchTimer) {
+        clearTimeout(window.appManagerSearchTimer);
+    }
+    window.appManagerSearchTimer = setTimeout(() => {
+        window.renderAppManagerList(query || "");
+    }, 50);
+};
+window.shellOverlay = {
+    mode: null
+};
+window.getShellOverlayElement = () => {
+    return document.getElementById("shell_panel_overlay");
+};
+window.positionShellOverlay = () => {
+    const overlay = window.getShellOverlayElement();
+    const shell = document.getElementById("main_shell");
+    if (!overlay || !shell) return;
+
+    const shellRect = shell.getBoundingClientRect();
+    const quickActions = document.getElementById("shell_quick_actions");
+    const updateNotice = document.getElementById("main_shell_update_notice");
+    let overlayTop = 0;
+
+    if (quickActions) {
+        const quickRect = quickActions.getBoundingClientRect();
+        overlayTop = Math.max(overlayTop, quickRect.bottom - shellRect.top);
+    }
+    if (updateNotice && updateNotice.offsetHeight > 0) {
+        const noticeRect = updateNotice.getBoundingClientRect();
+        overlayTop = Math.max(overlayTop, noticeRect.bottom - shellRect.top);
+    }
+
+    overlay.style.top = `${Math.round(overlayTop + 6)}px`;
+    overlay.style.left = "8px";
+    overlay.style.right = "8px";
+    overlay.style.bottom = "8px";
+};
+window.closeShellOverlay = () => {
+    const overlay = window.getShellOverlayElement();
+    if (!overlay) return;
+
+    overlay.classList.remove("visible");
+    overlay.innerHTML = "";
+    window.shellOverlay.mode = null;
+    window.appManager.modalId = null;
+    window.systemExplorer.modalId = null;
+    window.updateAppManagerButton();
+    window.updateSystemExplorerButton();
+    window.keyboard.attach();
+    if (window.term[window.currentTerm] && window.term[window.currentTerm].term) {
+        window.term[window.currentTerm].term.focus();
+    }
+};
+window.openShellOverlay = (mode, html, onready) => {
+    const overlay = window.getShellOverlayElement();
+    if (!overlay) return;
+
+    if (window.shellOverlay.mode && window.shellOverlay.mode !== mode) {
+        window.closeShellOverlay();
+    }
+
+    window.keyboard.detach();
+    overlay.innerHTML = `<div id="shell_panel_overlay_inner">${html}</div>`;
+    overlay.classList.add("visible");
+    window.positionShellOverlay();
+    window.shellOverlay.mode = mode;
+    window.appManager.modalId = mode === "appManager" ? "shell_overlay" : null;
+    window.systemExplorer.modalId = mode === "systemExplorer" ? "shell_overlay" : null;
+    window.updateAppManagerButton();
+    window.updateSystemExplorerButton();
+
+    if (typeof onready === "function") {
+        onready();
+    }
+};
+window.updateAppManagerButton = () => {
+    const button = document.getElementById("shell_apps_button");
+    if (!button) return;
+
+    const modalIsOpen = Boolean(
+        window.appManager.modalId !== null
+        && window.modals
+        && window.modals[window.appManager.modalId]
+    );
+    const overlayIsOpen = window.shellOverlay.mode === "appManager";
+    const isOpen = modalIsOpen || overlayIsOpen;
+    button.classList.toggle("active", isOpen);
+    button.innerHTML = isOpen
+        ? `<span>APP MANAGER</span><strong>CLOSE INSTALLED APPS</strong>`
+        : `<span>APP MANAGER</span><strong>OPEN INSTALLED APPS</strong>`;
+};
+window._resolveSystemExplorerRoot = () => {
+    const downloadsPath = remote.app.getPath("downloads");
+    if (downloadsPath && fs.existsSync(downloadsPath)) {
+        return downloadsPath;
+    }
+    return remote.app.getPath("home");
+};
+window.systemExplorer = {
+    modalId: null,
+    rootDir: window._resolveSystemExplorerRoot(),
+    currentPath: window._resolveSystemExplorerRoot(),
+    entries: [],
+    searchQuery: "",
+    lastError: null,
+    searchTimer: null,
+    cache: new Map(),
+    cacheTtlMs: 4000,
+    priming: false
+};
+window.getSystemExplorerCached = targetPath => {
+    const cached = window.systemExplorer.cache.get(targetPath);
+    if (!cached) return null;
+    if ((Date.now() - cached.timestamp) > window.systemExplorer.cacheTtlMs) {
+        window.systemExplorer.cache.delete(targetPath);
+        return null;
+    }
+    return {
+        path: cached.path,
+        entries: cached.entries.map(entry => ({...entry}))
+    };
+};
+window.setSystemExplorerCache = result => {
+    if (!result || !result.path || !Array.isArray(result.entries)) return;
+    window.systemExplorer.cache.set(result.path, {
+        path: result.path,
+        entries: result.entries.map(entry => ({...entry})),
+        timestamp: Date.now()
+    });
+};
+window.prefetchSystemExplorerChildren = (entries = []) => {
+    const folderPaths = entries
+        .filter(entry => entry.kind === "folder")
+        .slice(0, 10)
+        .map(entry => entry.path);
+    if (!folderPaths.length) return;
+
+    let index = 0;
+    const step = () => {
+        if (index >= folderPaths.length) return;
+        window.readSystemExplorerEntries(folderPaths[index], { forceRefresh: false, silent: true });
+        index += 1;
+        setTimeout(step, 45);
+    };
+    setTimeout(step, 45);
+};
+window.primeSystemExplorerIndex = () => {
+    if (window.systemExplorer.priming) return;
+    window.systemExplorer.priming = true;
+    setTimeout(() => {
+        try {
+            const rootResult = window.readSystemExplorerEntries(window.systemExplorer.rootDir, { forceRefresh: false, silent: true });
+            window.prefetchSystemExplorerChildren(rootResult.entries);
+        } finally {
+            setTimeout(() => {
+                window.systemExplorer.priming = false;
+            }, 600);
+        }
+    }, 0);
+};
+window._resolveSystemExplorerPath = targetPath => {
+    const rootPath = path.resolve(window.systemExplorer.rootDir);
+    const resolvedPath = path.resolve(targetPath || rootPath);
+    if (resolvedPath === rootPath || resolvedPath.startsWith(rootPath + path.sep)) {
+        return resolvedPath;
+    }
+    return rootPath;
+};
+window.detectSystemExplorerName = () => {
+    if (process.platform !== "linux") return "System File Explorer";
+
+    try {
+        const desktopEntry = childProcess.execFileSync("xdg-mime", ["query", "default", "inode/directory"], {
+            encoding: "utf8"
+        }).trim();
+        const fallbackName = desktopEntry
+            ? desktopEntry.replace(/\.desktop$/i, "").replace(/[-_]+/g, " ")
+            : "System File Explorer";
+        if (!desktopEntry) return fallbackName;
+
+        const desktopPaths = [
+            path.join(remote.app.getPath("home"), ".local/share/applications", desktopEntry),
+            path.join("/usr/local/share/applications", desktopEntry),
+            path.join("/usr/share/applications", desktopEntry)
+        ];
+        const desktopPath = desktopPaths.find(candidate => fs.existsSync(candidate));
+        if (!desktopPath) return fallbackName;
+
+        const nameLine = fs.readFileSync(desktopPath, "utf8").split(/\r?\n/).find(line => line.startsWith("Name="));
+        return nameLine ? nameLine.slice(5).trim() : fallbackName;
+    } catch (error) {
+        console.warn("Could not detect system file explorer:", error);
+        return "System File Explorer";
+    }
+};
+window.updateSystemExplorerButton = () => {
+    const button = document.getElementById("shell_files_button");
+    if (!button) return;
+
+    const isOpen = window.shellOverlay.mode === "systemExplorer";
+    button.classList.toggle("active", isOpen);
+    button.disabled = false;
+    button.innerHTML = isOpen
+        ? `<span>SYSTEM FILES</span><strong>CLOSE FILE EXPLORER</strong>`
+        : `<span>SYSTEM FILES</span><strong>OPEN FILE EXPLORER</strong>`;
+};
+window._formatSystemExplorerSize = size => {
+    if (typeof size !== "number" || Number.isNaN(size)) return "--";
+    if (size < 1024) return `${size} B`;
+    if (size < 1024 * 1024) return `${Math.round(size / 1024)} KB`;
+    if (size < 1024 * 1024 * 1024) return `${(size / (1024 * 1024)).toFixed(1)} MB`;
+    return `${(size / (1024 * 1024 * 1024)).toFixed(1)} GB`;
+};
+window.readSystemExplorerEntries = (targetPath, options = {}) => {
+    const { forceRefresh = false, silent = false } = options;
+    const safeTargetPath = window._resolveSystemExplorerPath(targetPath || window.systemExplorer.rootDir);
+    if (!forceRefresh) {
+        const cached = window.getSystemExplorerCached(safeTargetPath);
+        if (cached) return cached;
+    }
+    let names = [];
+    try {
+        names = fs.readdirSync(safeTargetPath);
+    } catch (error) {
+        if (!silent) {
+            console.warn("Could not read system explorer path:", error);
+        }
+        return {
+            path: safeTargetPath,
+            entries: [],
+            error: error.message || "Could not read this folder."
+        };
+    }
+
+    const entries = names.map(name => {
+        const entryPath = path.join(safeTargetPath, name);
+        let stats = null;
+        try {
+            stats = fs.lstatSync(entryPath);
+        } catch (error) {
+            return null;
+        }
+
+        const isDirectory = stats.isDirectory();
+        return {
+            name,
+            path: entryPath,
+            kind: isDirectory ? "folder" : "file",
+            size: isDirectory ? null : stats.size
+        };
+    }).filter(Boolean);
+
+    entries.sort((a, b) => {
+        if (a.kind !== b.kind) return a.kind === "folder" ? -1 : 1;
+        return a.name.localeCompare(b.name);
+    });
+
+    const result = {
+        path: safeTargetPath,
+        entries
+    };
+    window.setSystemExplorerCache(result);
+    return result;
+};
+window.renderSystemExplorerList = () => {
+    const list = document.getElementById("systemExplorerList");
+    if (!list) return;
+
+    if (window.systemExplorer.lastError) {
+        list.innerHTML = `<div class="appManager_empty">${window._escapeHtml(window.systemExplorer.lastError)}</div>`;
+        return;
+    }
+
+    const query = (window.systemExplorer.searchQuery || "").trim().toLowerCase();
+    const visibleEntries = window.systemExplorer.entries.filter(entry => {
+        if (!query) return true;
+        return entry.name.toLowerCase().includes(query) || entry.path.toLowerCase().includes(query);
+    });
+
+    if (!visibleEntries.length) {
+        list.innerHTML = `<div class="appManager_empty">${query ? "NO FILES MATCH THIS FILTER" : "THIS FOLDER IS EMPTY"}</div>`;
+    } else {
+        list.innerHTML = visibleEntries.map(entry => {
+            return `
+                <button class="appManager_item systemExplorer_item" onclick='window.openSystemExplorerEntry(${JSON.stringify(entry.path)}, ${JSON.stringify(entry.kind)})'>
+                    <strong>${window._escapeHtml(entry.name)}</strong>
+                    <span>${entry.kind === "folder" ? "Folder" : `File • ${window._escapeHtml(window._formatSystemExplorerSize(entry.size))}`}</span>
+                    <small>${window._escapeHtml(entry.path)}</small>
+                </button>
+            `;
+        }).join("");
+    }
+};
+window.updateSystemExplorerSearch = query => {
+    if (window.systemExplorer.searchTimer) {
+        clearTimeout(window.systemExplorer.searchTimer);
+    }
+    window.systemExplorer.searchTimer = setTimeout(() => {
+        window.systemExplorer.searchQuery = query || "";
+        window.renderSystemExplorerList();
+    }, 50);
+};
+window.openSystemExplorerEntry = (entryPath, kind) => {
+    if (window.audioManager && window.audioManager.folder) {
+        window.audioManager.folder.play();
+    }
+    if (kind === "folder") {
+        window.renderSystemExplorer(entryPath);
+        return;
+    }
+    electron.shell.openPath(entryPath);
+};
+window.goSystemExplorerBack = () => {
+    const parentPath = window._resolveSystemExplorerPath(path.resolve(window.systemExplorer.currentPath || window.systemExplorer.rootDir, ".."));
+    if (window.audioManager && window.audioManager.folder) {
+        window.audioManager.folder.play();
+    }
+    if (parentPath === window.systemExplorer.currentPath) return;
+    window.renderSystemExplorer(parentPath);
+};
+window.renderSystemExplorer = targetPath => {
+    const result = window.readSystemExplorerEntries(targetPath || window.systemExplorer.currentPath || window.systemExplorer.rootDir, { forceRefresh: false });
+    window.systemExplorer.currentPath = result.path;
+    window.systemExplorer.entries = result.entries;
+    window.systemExplorer.lastError = result.error || null;
+    window.systemExplorer.searchQuery = "";
+    const rootPath = path.resolve(window.systemExplorer.rootDir);
+    const isAtRoot = result.path === rootPath;
+
+    window.openShellOverlay("systemExplorer", `
+        <div id="systemExplorer">
+            <h2 class="shell_overlay_title">SYSTEM FILES</h2>
+            ${isAtRoot ? "" : `<div id="systemExplorerTopControls"><button id="systemExplorerBack" type="button" onclick="window.goSystemExplorerBack()">BACK</button></div>`}
+            <input id="systemExplorerSearch" type="text" placeholder="Search files and folders" oninput="window.updateSystemExplorerSearch(this.value)">
+            <div id="systemExplorerList" class="appManager_list">
+            </div>
+        </div>
+    `, () => {
+        const list = document.getElementById("systemExplorerList");
+        if (list) list.scrollTop = 0;
+        const searchInput = document.getElementById("systemExplorerSearch");
+        if (searchInput) searchInput.value = "";
+        window.renderSystemExplorerList();
+        window.prefetchSystemExplorerChildren(window.systemExplorer.entries);
+    });
+};
+window.openSystemFileExplorer = targetPath => {
+    window.renderSystemExplorer(targetPath || window.systemExplorer.rootDir);
+};
+window.toggleSystemExplorer = () => {
+    if (window.appManager.modalId !== null && window.modals && window.modals[window.appManager.modalId]) {
+        window.modals[window.appManager.modalId].close();
+    }
+
+    if (window.shellOverlay.mode === "systemExplorer") {
+        window.closeShellOverlay();
+        return;
+    }
+    window.openSystemFileExplorer(window.systemExplorer.rootDir);
+};
 window.renderAppManagerList = query => {
     const list = document.getElementById("appManagerList");
     if (!list) return;
@@ -681,16 +1150,18 @@ window.renderAppManagerList = query => {
         window.appManager.selectedAppId = apps[0].id;
     }
 
-    list.innerHTML = apps.map(app => `
-        <button
-            class="appManager_item ${app.id === window.appManager.selectedAppId ? "active" : ""}"
-            onclick="window.selectAppManagerItem('${window._escapeHtml(app.id)}')"
-            ondblclick="window.launchSelectedApp()">
-            <strong>${window._escapeHtml(app.name)}</strong>
-            <span>${window._escapeHtml(app.categories || app.exec)}</span>
-            <small>${window._escapeHtml(app.terminal ? app.exec : app.id)}</small>
-        </button>
-    `).join("");
+    list.innerHTML = apps.map(app => {
+        const encodedAppId = encodeURIComponent(app.id);
+        return `
+            <button
+                class="appManager_item ${app.id === window.appManager.selectedAppId ? "active" : ""}"
+                onclick="window.openAppManagerEntry(decodeURIComponent('${encodedAppId}'))">
+                <strong>${window._escapeHtml(app.name)}</strong>
+                <span>${window._escapeHtml(app.categories || app.exec)}</span>
+                <small>${window._escapeHtml(app.terminal ? app.exec : app.id)}</small>
+            </button>
+        `;
+    }).join("");
 
     const activeItem = list.querySelector(".appManager_item.active");
     if (activeItem) activeItem.scrollIntoView({block: "nearest"});
@@ -700,6 +1171,15 @@ window.selectAppManagerItem = appId => {
     window.appManager.selectedAppId = appId;
     const search = document.getElementById("appManagerSearch");
     window.renderAppManagerList(search ? search.value : "");
+};
+
+window.openAppManagerEntry = appId => {
+    if (!appId) return;
+    window.selectAppManagerItem(appId);
+    if (window.audioManager && window.audioManager.folder) {
+        window.audioManager.folder.play();
+    }
+    window.launchSelectedApp();
 };
 
 window.launchSelectedApp = () => {
@@ -718,39 +1198,25 @@ window.moveAppManagerSelection = direction => {
 };
 
 window.openAppManager = () => {
-    if (document.getElementById("appManagerSearch")) return;
+    window.openShellOverlay("appManager", `
+        <div id="appManager">
+            <h2 class="shell_overlay_title">APP MANAGER</h2>
+            <input id="appManagerSearch" type="text" placeholder="Search installed applications" oninput="window.updateAppManagerSearch(this.value)">
+            <div id="appManagerList" class="appManager_list"></div>
+        </div>
+    `);
 
-    window.keyboard.detach();
-    ipc.send("appManager:getInstalledApps");
-
-    const modalId = new Modal({
-        type: "custom",
-        title: `Application Manager <i>(launch installed apps)</i>`,
-        html: `<div id="appManager">
-                <input id="appManagerSearch" type="text" placeholder="Search installed applications" oninput="window.renderAppManagerList(this.value)">
-                <div id="appManagerList" class="appManager_list">
-                    <div class="appManager_empty">SCANNING APPLICATION DATABASE...</div>
-                </div>
-                <h6 id="appManagerStatus">Use Ctrl+Shift+A any time to reopen this launcher.</h6>
-            </div>`,
-        buttons: [
-            {label:"Launch", action:"window.launchSelectedApp();"}
-        ]
-    }, () => {
-        window.appManager.modalId = null;
-        window.keyboard.attach();
-    });
-    window.appManager.modalId = modalId;
-
-    ipc.once("appManager:installedApps", (_event, payload) => {
+    const handleAppsLoaded = payload => {
+        if (!document.getElementById("appManagerList")) return;
         if (payload && payload.error) {
             document.getElementById("appManagerList").innerHTML = `<div class="appManager_empty">${window._escapeHtml(payload.error)}</div>`;
             return;
         }
         window.appManager.apps = payload || [];
+        window.appManager.installedAppsLoaded = true;
         window.renderAppManagerList("");
-        document.getElementById("appManagerStatus").innerText = `${window.appManager.apps.length} applications indexed`;
         const searchInput = document.getElementById("appManagerSearch");
+        if (!searchInput) return;
         searchInput.focus();
         searchInput.addEventListener("keydown", event => {
             if (event.key === "ArrowDown") {
@@ -762,25 +1228,48 @@ window.openAppManager = () => {
             } else if (event.key === "Enter") {
                 event.preventDefault();
                 window.launchSelectedApp();
-            } else if (event.key === "Escape" && window.appManager.modalId !== null) {
+            } else if (event.key === "Escape" && window.shellOverlay.mode === "appManager") {
                 event.preventDefault();
-                window.modals[window.appManager.modalId].close();
+                window.closeShellOverlay();
             }
         });
-    });
+    };
+
+    if (window.appManager.installedAppsLoaded && window.appManager.apps.length) {
+        handleAppsLoaded(window.appManager.apps);
+    } else {
+        document.getElementById("appManagerList").innerHTML = `<div class="appManager_empty">SCANNING APPLICATION DATABASE...</div>`;
+        if (!window.appManager.loadingPromise) {
+            window.primeAppManagerIndex();
+        }
+        Promise.resolve(window.appManager.loadingPromise).then(handleAppsLoaded).catch(() => {});
+    }
 
     ipc.once("appManager:launchResult", (_event, payload) => {
         if (payload.ok) {
-            document.getElementById("appManagerStatus").innerText = `LAUNCHED ${payload.app.name}`;
             window.audioManager.granted.play();
-            if (window.modals[modalId]) {
-                window.modals[modalId].close();
-            }
         } else {
-            document.getElementById("appManagerStatus").innerText = payload.error || "Launch failed";
             window.audioManager.denied.play();
         }
     });
+};
+window.toggleAppManager = () => {
+    if (window.shellOverlay.mode === "appManager") {
+        window.closeShellOverlay();
+        return;
+    }
+
+    if (window.appManager.modalId !== null && window.modals && window.modals[window.appManager.modalId]) {
+        window.modals[window.appManager.modalId].close();
+        return;
+    }
+
+    if (window.appManager.modalId !== null && (!window.modals || !window.modals[window.appManager.modalId])) {
+        window.appManager.modalId = null;
+        window.updateAppManagerButton();
+    }
+
+    window.openAppManager();
 };
 
 window.setActiveShellTabUI = number => {
@@ -847,7 +1336,7 @@ window.spawnShellTab = (number, options = {}) => {
         window.pendingTermActivation[number] = true;
     }
 
-    document.getElementById(`shell_tab${number}`).innerHTML = "<p>LOADING...</p>";
+    window.setShellTabLabel(number);
 
     const requestId = `shelltab-${number}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     const replyChannel = `ttyspawn-reply-${requestId}`;
@@ -857,7 +1346,7 @@ window.spawnShellTab = (number, options = {}) => {
         ipc.once(replyChannel, (_event, reply) => {
             if (reply.startsWith("ERROR")) {
                 if (terminalEl) terminalEl.classList.remove("prewarm");
-                document.getElementById(`shell_tab${number}`).innerHTML = "<p>ERROR</p>";
+                window.setShellTabLabel(number);
                 delete window.pendingTermActivation[number];
                 reject(new Error(reply));
                 return;
@@ -875,7 +1364,7 @@ window.spawnShellTab = (number, options = {}) => {
             client.onclose = () => {
                 delete client.onprocesschange;
                 delete client.onready;
-                document.getElementById(`shell_tab${number}`).innerHTML = "<p>EMPTY</p>";
+                window.setShellTabLabel(number);
                 if (terminalEl) {
                     terminalEl.className = "";
                     terminalEl.innerHTML = "";
@@ -891,8 +1380,8 @@ window.spawnShellTab = (number, options = {}) => {
                 }
             };
 
-            client.onprocesschange = processName => {
-                document.getElementById(`shell_tab${number}`).innerHTML = `<p>#${number+1} - ${processName || "bash"}</p>`;
+            client.onprocesschange = () => {
+                window.setShellTabLabel(number);
             };
 
             client.onready = () => {
@@ -905,7 +1394,7 @@ window.spawnShellTab = (number, options = {}) => {
                 resolve(client);
             };
 
-            document.getElementById(`shell_tab${number}`).innerHTML = `<p>::${port}</p>`;
+            window.setShellTabLabel(number);
         });
 
         ipc.send("ttyspawn", {
@@ -959,24 +1448,87 @@ window.focusShellTab = number => {
     }
 };
 
+window.settingsEditorCache = {
+    keyboards: [],
+    themes: [],
+    ifaces: [],
+    refreshedAt: 0,
+    ttlMs: 30000,
+    loadingPromise: null
+};
+
+window.refreshSettingsEditorCache = async (forceRefresh = false) => {
+    const cache = window.settingsEditorCache;
+    const cacheIsFresh = cache.refreshedAt > 0 && (Date.now() - cache.refreshedAt) < cache.ttlMs;
+    if (!forceRefresh && cacheIsFresh) {
+        return {
+            keyboards: [...cache.keyboards],
+            themes: [...cache.themes],
+            ifaces: [...cache.ifaces]
+        };
+    }
+
+    if (cache.loadingPromise) {
+        return cache.loadingPromise;
+    }
+
+    cache.loadingPromise = (async () => {
+        const keyboards = fs.readdirSync(keyboardsDir)
+            .filter(kb => kb.endsWith(".json"))
+            .map(kb => kb.replace(".json", ""))
+            .filter(kb => !unsupportedKeyboardLayouts.has(kb));
+
+        const themes = fs.readdirSync(themesDir)
+            .filter(th => th.endsWith(".json"))
+            .map(th => th.replace(".json", ""));
+
+        let ifaces = [];
+        try {
+            ifaces = (await window.si.networkInterfaces())
+                .map(net => (net && typeof net.iface === "string") ? net.iface.trim() : "")
+                .filter(Boolean);
+        } catch (error) {
+            console.warn("Failed to refresh settings interfaces cache:", error);
+        }
+
+        cache.keyboards = keyboards;
+        cache.themes = themes;
+        cache.ifaces = [...new Set(ifaces)];
+        cache.refreshedAt = Date.now();
+
+        return {
+            keyboards: [...cache.keyboards],
+            themes: [...cache.themes],
+            ifaces: [...cache.ifaces]
+        };
+    })();
+
+    try {
+        return await cache.loadingPromise;
+    } finally {
+        cache.loadingPromise = null;
+    }
+};
+
+window.warmSettingsEditorCache = () => {
+    window.refreshSettingsEditorCache().catch(() => {});
+};
+
 // Settings editor
 window.openSettings = async () => {
     if (document.getElementById("settingsEditor")) return;
 
     // Build lists of available keyboards, themes, monitors
+    const settingsEditorData = await window.refreshSettingsEditorCache();
     let keyboards = "";
     let themes = "";
     let monitors = "";
     let ifaces = `<option value="__AUTO__">Auto-detect active interface</option>`;
-    fs.readdirSync(keyboardsDir).forEach(kb => {
-        if (!kb.endsWith(".json")) return;
-        kb = kb.replace(".json", "");
+    settingsEditorData.keyboards.forEach(kb => {
         if (kb === window.settings.keyboard) return;
         keyboards += `<option>${kb}</option>`;
     });
-    fs.readdirSync(themesDir).forEach(th => {
-        if (!th.endsWith(".json")) return;
-        th = th.replace(".json", "");
+    settingsEditorData.themes.forEach(th => {
         if (th === window.settings.theme) return;
         themes += `<option>${th}</option>`;
     });
@@ -987,10 +1539,9 @@ window.openSettings = async () => {
     const currentIfaceLabel = currentIfaceValue === "__AUTO__"
         ? `Auto-detect (${window.mods.netstat.iface || "unavailable"})`
         : currentIfaceValue;
-    let nets = await window.si.networkInterfaces();
-    nets.forEach(net => {
-        if (!net.iface || net.iface === currentIfaceValue || net.iface === window.mods.netstat.iface) return;
-        ifaces += `<option>${net.iface}</option>`;
+    settingsEditorData.ifaces.forEach(iface => {
+        if (!iface || iface === currentIfaceValue || iface === window.mods.netstat.iface) return;
+        ifaces += `<option>${iface}</option>`;
     });
 
     // Unlink the tactile keyboard from the terminal emulator to allow filling in the settings fields
@@ -998,8 +1549,10 @@ window.openSettings = async () => {
 
     new Modal({
         type: "custom",
+        fixedPosition: true,
+        draggable: false,
         title: `Settings <i>(v${electron.remote.app.getVersion()})</i>`,
-        html: `<table id="settingsEditor">
+        html: `<div id="settingsEditorWrap"><table id="settingsEditor">
                     <tr>
                         <th>Key</th>
                         <th>Description</th>
@@ -1014,21 +1567,6 @@ window.openSettings = async () => {
                         <td>shell</td>
                         <td>The program to run as a terminal emulator</td>
                         <td><input type="text" id="settingsEditor-shell" value="${window.settings.shell}"></td>
-                    </tr>
-                    <tr>
-                        <td>shellArgs</td>
-                        <td>Arguments to pass to the shell</td>
-                        <td><input type="text" id="settingsEditor-shellArgs" value="${window.settings.shellArgs || ''}"></td>
-                    </tr>
-                    <tr>
-                        <td>cwd</td>
-                        <td>Working Directory to start in</td>
-                        <td><input type="text" id="settingsEditor-cwd" value="${window.settings.cwd}"></td>
-                    </tr>
-                    <tr>
-                        <td>env</td>
-                        <td>Custom shell environment override</td>
-                        <td><input type="text" id="settingsEditor-env" value="${window.settings.env || ""}"></td>
                     </tr>
                     <tr>
                         <td>username</td>
@@ -1068,14 +1606,6 @@ window.openSettings = async () => {
                         <td>audioVolume</td>
                         <td>Set default volume for sound effects (0.0 - 1.0)</td>
                         <td><input type="number" id="settingsEditor-audioVolume" value="${window.settings.audioVolume || '1.0'}"></td>
-                    </tr>
-                    <tr>
-                        <td>disableFeedbackAudio</td>
-                        <td>Disable recurring feedback sound FX (input/output, mostly)</td>
-                        <td><select id="settingsEditor-disableFeedbackAudio">
-                            <option>${window.settings.disableFeedbackAudio}</option>
-                            <option>${!window.settings.disableFeedbackAudio}</option>
-                        </select></td>
                     </tr>
                     <tr>
                         <td>port</td>
@@ -1124,22 +1654,6 @@ window.openSettings = async () => {
                         <td><select id="settingsEditor-iface">
                             <option value="${currentIfaceValue}">${currentIfaceLabel}</option>
                             ${ifaces}
-                        </select></td>
-                    </tr>
-                    <tr>
-                        <td>allowWindowed</td>
-                        <td>Allow using F11 key to set the UI in windowed mode</td>
-                        <td><select id="settingsEditor-allowWindowed">
-                            <option>${window.settings.allowWindowed}</option>
-                            <option>${!window.settings.allowWindowed}</option>
-                        </select></td>
-                    </tr>
-                    <tr>
-                        <td>keepGeometry</td>
-                        <td>Try to keep a 16:9 aspect ratio in windowed mode</td>
-                        <td><select id="settingsEditor-keepGeometry">
-                            <option>${(window.settings.keepGeometry === false) ? 'false' : 'true'}</option>
-                            <option>${(window.settings.keepGeometry === false) ? 'true' : 'false'}</option>
                         </select></td>
                     </tr>
                     <tr>
@@ -1214,12 +1728,11 @@ window.openSettings = async () => {
                             <option>${!window.settings.experimentalFeatures}</option>
                         </select></td>
                     </tr>
-                </table>
+                </table></div>
                 <h6 id="settingsEditorStatus">Loaded values from memory</h6>
                 <br>`,
         buttons: [
-            {label: "Open in External Editor", action:`electron.shell.openPath('${settingsFile}');electronWin.minimize();`},
-            {label: "Save to Disk", action: "window.writeSettingsFile()"},
+            {label: "Save", action: "window.writeSettingsFile();"},
             {label: "Reload UI", action: "window.location.reload(true);"},
             {label: "Restart eDEX", action: "electron.remote.app.relaunch();electron.remote.app.quit();"}
         ]
@@ -1230,6 +1743,11 @@ window.openSettings = async () => {
         // Focus back on the term
         window.term[window.currentTerm].term.focus();
     });
+
+    // Refresh cached lists in background so next open is instant and up-to-date.
+    setTimeout(() => {
+        window.refreshSettingsEditorCache(true).catch(() => {});
+    }, 1000);
 };
 
 window.writeFile = (path) => {
@@ -1241,19 +1759,15 @@ window.writeFile = (path) => {
 window.writeSettingsFile = () => {
     const selectedIface = document.getElementById("settingsEditor-iface").value;
 
-    window.settings = {
+    const nextSettings = {
         ...window.settings,
         shell: document.getElementById("settingsEditor-shell").value,
-        shellArgs: document.getElementById("settingsEditor-shellArgs").value,
-        cwd: document.getElementById("settingsEditor-cwd").value,
-        env: document.getElementById("settingsEditor-env").value,
         username: document.getElementById("settingsEditor-username").value,
         keyboard: document.getElementById("settingsEditor-keyboard").value,
         theme: document.getElementById("settingsEditor-theme").value,
         termFontSize: Number(document.getElementById("settingsEditor-termFontSize").value),
         audio: (document.getElementById("settingsEditor-audio").value === "true"),
         audioVolume: Number(document.getElementById("settingsEditor-audioVolume").value),
-        disableFeedbackAudio: (document.getElementById("settingsEditor-disableFeedbackAudio").value === "true"),
         pingAddr: document.getElementById("settingsEditor-pingAddr").value,
         clockHours: Number(document.getElementById("settingsEditor-clockHours").value),
         port: Number(document.getElementById("settingsEditor-port").value),
@@ -1261,8 +1775,9 @@ window.writeSettingsFile = () => {
         nointro: (document.getElementById("settingsEditor-nointro").value === "true"),
         nocursor: (document.getElementById("settingsEditor-nocursor").value === "true"),
         iface: selectedIface === "__AUTO__" ? false : selectedIface,
-        allowWindowed: (document.getElementById("settingsEditor-allowWindowed").value === "true"),
-        keepGeometry: (document.getElementById("settingsEditor-keepGeometry").value === "true"),
+        forceFullscreen: true,
+        allowWindowed: false,
+        keepGeometry: false,
         excludeThreadsFromToplist: (document.getElementById("settingsEditor-excludeThreadsFromToplist").value === "true"),
         hideDotfiles: (document.getElementById("settingsEditor-hideDotfiles").value === "true"),
         fsListView: (document.getElementById("settingsEditor-fsListView").value === "true"),
@@ -1274,13 +1789,23 @@ window.writeSettingsFile = () => {
         experimentalFeatures: (document.getElementById("settingsEditor-experimentalFeatures").value === "true")
     };
 
-    Object.keys(window.settings).forEach(key => {
-        if (window.settings[key] === "undefined" || typeof window.settings[key] === "undefined") {
-            delete window.settings[key];
+    const persistedSettings = {
+        ...nextSettings
+    };
+    delete nextSettings.disableFeedbackAudio;
+    delete persistedSettings.disableFeedbackAudio;
+    delete persistedSettings.shellArgs;
+    delete persistedSettings.cwd;
+    delete persistedSettings.env;
+
+    Object.keys(persistedSettings).forEach(key => {
+        if (persistedSettings[key] === "undefined" || typeof persistedSettings[key] === "undefined") {
+            delete persistedSettings[key];
         }
     });
 
-    fs.writeFileSync(settingsFile, JSON.stringify(window.settings, "", 4));
+    window.settings = nextSettings;
+    fs.writeFileSync(settingsFile, JSON.stringify(persistedSettings, "", 4));
     document.getElementById("settingsEditorStatus").innerText = "New values written to settings.json file at "+new Date().toTimeString();
 };
 
@@ -1552,6 +2077,7 @@ window.onresize = () => {
             }
         }
     }
+    window.positionShellOverlay();
 };
 
 // See #413

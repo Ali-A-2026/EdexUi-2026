@@ -52,11 +52,9 @@ class UpdateChecker {
                         } else if (Number(release.tag_name.slice(1).replace(/\./g, "")) < Number(current.replace("-pre", "").replace(/\./g, ""))) {
                             electron.ipcRenderer.send("log", "info", "UpdateChecker: Running an unreleased, development version.");
                         } else {
-                            new Modal({
-                                type: "info",
-                                title: "New version available",
-                                message: `EdexUi-2026 <strong>${release.tag_name}</strong> is now available.<br/>Head over to <a href="#" onclick="require('electron').shell.openExternal('${release.html_url}')">GitHub</a> to download the latest version.`
-                            });
+                            if (typeof window.showReleaseUpdateNotice === "function") {
+                                window.showReleaseUpdateNotice(release);
+                            }
                             electron.ipcRenderer.send("log", "info", `UpdateChecker: New version ${release.tag_name} available.`);
                         }
                     } catch(e) {

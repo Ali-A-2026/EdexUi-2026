@@ -12,8 +12,10 @@ section#boot_screen {
     font-size: 1.4vh;
     text-align: left;
     display: flex;
-    align-items: flex-end;
-    justify-content: flex-start;
+    background: var(--color_light_black, #000000);
+    background-color: var(--color_light_black, #000000);
+    align-items: flex-start;
+    justify-content: flex-end;
 }
 
 section#boot_screen.center {

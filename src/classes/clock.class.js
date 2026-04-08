@@ -3,7 +3,7 @@ class Clock {
         if (!parentId) throw "Missing parameters";
 
         // Load settings
-        this.twelveHours = (window.settings.clockHours === 12);
+        this.twelveHours = (Number(window.settings.clockHours) === 12);
 
         // Create DOM
         this.parent = document.getElementById(parentId);
@@ -17,6 +17,17 @@ class Clock {
         this.updater = setInterval(() => {
             this.updateClock();
         }, 1000);
+    }
+    setClockHours(hours) {
+        this.twelveHours = (Number(hours) === 12);
+
+        let clock = document.getElementById("mod_clock");
+        if (clock) {
+            if (this.twelveHours) clock.classList.add("mod_clock_twelve");
+            else clock.classList.remove("mod_clock_twelve");
+        }
+
+        this.updateClock();
     }
     updateClock() {
         let time = new Date();

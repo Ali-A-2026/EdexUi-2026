@@ -39,6 +39,23 @@ div.modal_popup.focus {
     z-index: 2500 !important;
 }
 
+div.modal_popup.fixed_center {
+    top: 16vh;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+div.modal_popup.fixed_center > h1 {
+    cursor: default;
+}
+
+div.modal_popup.fixed_center.shell_overlay_modal {
+    width: min(54vw, 840px);
+    max-width: calc(65vw - 3vh);
+    max-height: 62vh;
+    overflow: hidden;
+}
+
 div.modal_popup.blink {
     border: none;
     animation-name: blink;
@@ -128,16 +145,57 @@ div.modal_popup table td {
     font-size: 1.7vh;
 }
 
-div.modal_popup table#settingsEditor tbody {
-	display: block;
-	position: relative;
-	max-height: 60vh;
-	overflow: auto;
+#settingsEditorWrap {
+    width: 100%;
+    max-height: 60vh;
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
 }
 
-div.modal_popup table#settingsEditor tbody tr:first-child {
-	position: sticky;
-	top: 0px;
+div.modal_popup table#settingsEditor {
+    width: 100%;
+    table-layout: fixed;
+}
+
+div.modal_popup table#settingsEditor th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: rgba(var(--color_r), var(--color_g), var(--color_b), 0.92);
+}
+
+div.modal_popup table#settingsEditor td {
+    vertical-align: top;
+}
+
+div.modal_popup table#settingsEditor th:nth-child(1),
+div.modal_popup table#settingsEditor td:nth-child(1) {
+    width: 30%;
+    white-space: nowrap;
+}
+
+div.modal_popup table#settingsEditor th:nth-child(2),
+div.modal_popup table#settingsEditor td:nth-child(2) {
+    width: 45%;
+}
+
+div.modal_popup table#settingsEditor th:nth-child(3),
+div.modal_popup table#settingsEditor td:nth-child(3) {
+    width: 25%;
+}
+
+#settingsEditorWrap::-webkit-scrollbar {
+    width: 0.9vh;
+}
+
+#settingsEditorWrap::-webkit-scrollbar-track {
+    background: rgba(var(--color_r), var(--color_g), var(--color_b), 0.1);
+}
+
+#settingsEditorWrap::-webkit-scrollbar-thumb {
+    background: rgba(var(--color_r), var(--color_g), var(--color_b), 0.55);
+    border-radius: 999px;
 }
 
 div.modal_popup table:not(#settingsEditor) td:first-child {
@@ -212,25 +270,28 @@ h6#settingsEditorStatus {
     font-style: italic;
 }
 
-#appManager {
-    width: min(58vw, 900px);
+#appManager,
+#systemExplorer {
+    width: min(64vw, 980px);
     max-width: 82vw;
 }
 
-#appManagerSearch {
-    width: 100%;
-    background: var(--color_light_black);
-    color: rgb(var(--color_r), var(--color_g), var(--color_b));
-    border: 0.15vh solid rgb(var(--color_r), var(--color_g), var(--color_b));
-    padding: 0.7vh 0.8vh;
-    font-size: 1.7vh;
-    box-sizing: border-box;
-    margin-bottom: 1vh;
+#systemExplorer {
+    width: min(64vw, 980px);
+    max-width: 82vw;
+    display: flex;
+    flex-direction: column;
 }
 
-#appManagerSearch:focus {
-    outline: none !important;
-    background: rgba(var(--color_r), var(--color_g), var(--color_b), 0.12);
+.shell_overlay_title {
+    margin: 0 0 1vh;
+    font-size: 2vh;
+    font-weight: normal;
+}
+
+#systemExplorer .appManager_list {
+    max-height: 50vh;
+    min-height: 22vh;
 }
 
 .appManager_list {
@@ -254,10 +315,6 @@ h6#settingsEditorStatus {
     padding: 0.9vh 1vh !important;
     display: grid;
     gap: 0.3vh;
-    border-radius: 0.35vh !important;
-    border-bottom-left-radius: 0.35vh !important;
-    border-bottom-right-radius: 0.35vh !important;
-    background: rgba(var(--color_r), var(--color_g), var(--color_b), 0.05) !important;
 }
 
 .appManager_item strong {
@@ -271,14 +328,428 @@ h6#settingsEditorStatus {
     opacity: 0.8;
 }
 
-#appManagerStatus {
-    margin-top: 1vh;
-    min-height: 1.7vh;
-}
-
 .appManager_item.active,
 .appManager_item:hover {
     background: rgba(var(--color_r), var(--color_g), var(--color_b), 0.2) !important;
+}
+
+/* App Manager style restored to screenshot-like panel */
+#appManager {
+    width: 100%;
+    max-width: 100%;
+    height: 100%;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25vh;
+    padding: 0.36vh 0.92vh 0.92vh;
+    position: relative;
+    color: #eef3fb;
+    background: linear-gradient(180deg, rgba(39, 43, 59, 0.98), rgba(33, 37, 52, 0.98));
+    overflow: hidden;
+    clip-path: polygon(0 0, calc(100% - 1.7vh) 0, 100% 1.7vh, 100% 100%, 1.7vh 100%, 0 calc(100% - 1.7vh));
+}
+
+#appManager::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border: 0.16vh solid rgba(207, 218, 232, 0.78);
+    pointer-events: none;
+    clip-path: polygon(0 0, calc(100% - 1.7vh) 0, 100% 1.7vh, 100% 100%, 1.7vh 100%, 0 calc(100% - 1.7vh));
+}
+
+#appManager .shell_overlay_title {
+    margin: 0 0 0.08vh;
+    font-size: 4.3vh;
+    font-weight: 600;
+    letter-spacing: 0.01vh;
+    line-height: 1;
+    color: #f0f5fd;
+    text-transform: none;
+}
+
+#appManager .shell_overlay_subtitle {
+    margin-left: 0.45vh;
+    font-size: 2.2vh;
+    font-weight: 500;
+    line-height: 1;
+    color: rgba(214, 223, 236, 0.72);
+}
+
+#appManagerSearch {
+    width: 100%;
+    margin: 0 0 0.08vh;
+    box-sizing: border-box;
+    padding: 0.7vh 0.9vh;
+    font-size: 1.72vh;
+    font-family: var(--font_main);
+    color: rgba(235, 241, 250, 0.95);
+    background: rgba(32, 36, 50, 0.98);
+    border: 0.14vh solid rgba(205, 215, 229, 0.65);
+}
+
+#appManagerSearch::placeholder {
+    color: rgba(189, 201, 219, 0.6);
+}
+
+#appManagerSearch:focus {
+    outline: none !important;
+    background: rgba(39, 44, 61, 0.98);
+    border-color: rgba(229, 237, 248, 0.9);
+    box-shadow: 0 0 0.55vh rgba(201, 211, 227, 0.2);
+}
+
+#appManager .appManager_list {
+    flex: 1 1 auto;
+    max-height: none;
+    min-height: 0;
+    margin-top: 0;
+    padding: 0.15vh 0.38vh 0.6vh 0.06vh;
+    overflow: auto;
+    display: grid;
+    gap: 0.5vh;
+    border: 0;
+    background: transparent;
+    scrollbar-width: auto;
+    scrollbar-color: rgba(236, 242, 252, 0.74) rgba(193, 204, 220, 0.12);
+}
+
+#appManager .appManager_list::-webkit-scrollbar {
+    width: 0.88vh;
+}
+
+#appManager .appManager_list::-webkit-scrollbar-track {
+    background: rgba(160, 173, 194, 0.14);
+    border-radius: 999px;
+    border: 0.06vh solid rgba(216, 226, 239, 0.14);
+}
+
+#appManager .appManager_list::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, rgba(241, 247, 255, 0.98), rgba(184, 208, 237, 0.82));
+    border-radius: 999px;
+    border: 0.08vh solid rgba(34, 42, 59, 0.88);
+    box-shadow: 0 0 0.35vh rgba(158, 214, 255, 0.32);
+}
+
+#appManager .appManager_list::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(180deg, rgba(249, 252, 255, 1), rgba(204, 223, 247, 0.92));
+    box-shadow: 0 0 0.5vh rgba(161, 220, 255, 0.44);
+}
+
+#appManager .appManager_item {
+    width: 100%;
+    text-align: left;
+    cursor: pointer;
+    margin: 0 !important;
+    padding: 0.78vh 0.85vh !important;
+    display: grid;
+    gap: 0.08vh;
+    background: rgba(44, 49, 66, 0.94) !important;
+    border: 0.13vh solid rgba(198, 208, 222, 0.72);
+    transition: background 110ms linear, border-color 110ms linear;
+}
+
+#appManager .appManager_item strong {
+    font-size: 2.45vh;
+    font-weight: 700;
+    line-height: 1.05;
+    letter-spacing: 0.01vh;
+    color: rgba(248, 251, 255, 0.98);
+}
+
+#appManager .appManager_item span,
+#appManager .appManager_item small,
+#appManager .appManager_empty {
+    font-size: 1.45vh;
+    line-height: 1.2;
+    opacity: 0.9;
+    color: rgba(218, 226, 239, 0.86);
+}
+
+#appManager .appManager_item:hover,
+#appManager .appManager_item.active {
+    background: rgba(90, 96, 111, 0.96) !important;
+    border-color: rgba(239, 245, 252, 0.95);
+}
+
+#appManager .appManager_empty {
+    border: 0.12vh dashed rgba(209, 220, 235, 0.45);
+    background: rgba(46, 52, 68, 0.94);
+    padding: 0.9vh;
+    text-align: center;
+}
+
+/* System Explorer aligned with App Manager look */
+#systemExplorer {
+    width: 100%;
+    max-width: 100%;
+    height: 100%;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0.7vh;
+    padding: 0.78vh 0.92vh 0.92vh;
+    position: relative;
+    color: #eef3fb;
+    background: linear-gradient(180deg, rgba(39, 43, 59, 0.98), rgba(33, 37, 52, 0.98));
+    overflow: hidden;
+    clip-path: polygon(0 0, calc(100% - 1.7vh) 0, 100% 1.7vh, 100% 100%, 1.7vh 100%, 0 calc(100% - 1.7vh));
+}
+
+#systemExplorer::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border: 0.16vh solid rgba(207, 218, 232, 0.78);
+    pointer-events: none;
+    clip-path: polygon(0 0, calc(100% - 1.7vh) 0, 100% 1.7vh, 100% 100%, 1.7vh 100%, 0 calc(100% - 1.7vh));
+}
+
+#systemExplorer .shell_overlay_title {
+    margin: 0 0 0.08vh;
+    font-size: 4.3vh;
+    font-weight: 600;
+    letter-spacing: 0.01vh;
+    line-height: 1;
+    color: #f0f5fd;
+    text-transform: none;
+}
+
+#systemExplorer .shell_overlay_subtitle {
+    margin-left: 0.45vh;
+    font-size: 2.2vh;
+    font-weight: 500;
+    line-height: 1;
+    color: rgba(214, 223, 236, 0.72);
+}
+
+#systemExplorerTopControls {
+    display: flex;
+    align-items: center;
+    margin: 0 0 0.15vh;
+}
+
+#systemExplorerBack {
+    border: 0.14vh solid rgba(205, 215, 229, 0.65);
+    background: rgba(32, 36, 50, 0.98);
+    color: rgba(235, 241, 250, 0.95);
+    font-family: var(--font_main);
+    font-size: 1.6vh;
+    line-height: 1;
+    padding: 0.62vh 1vh;
+    cursor: pointer;
+    transition: background 120ms linear, border-color 120ms linear, box-shadow 120ms linear;
+}
+
+#systemExplorerBack:hover {
+    background: rgba(40, 46, 64, 0.98);
+    border-color: rgba(229, 237, 248, 0.9);
+}
+
+#systemExplorerBack:focus {
+    outline: none;
+    border-color: rgba(var(--color_r), var(--color_g), var(--color_b), 0.96);
+    box-shadow:
+        0 0 0.65vh rgba(var(--color_r), var(--color_g), var(--color_b), 0.3),
+        inset 0 0 0.8vh rgba(var(--color_r), var(--color_g), var(--color_b), 0.12);
+}
+
+#systemExplorer #systemExplorerList {
+    flex: 1 1 auto;
+    max-height: none;
+    min-height: 0;
+    margin-top: 0;
+    padding: 0.15vh 0.38vh 0.6vh 0.06vh;
+    overflow: auto;
+    display: grid;
+    gap: 0.5vh;
+    border: 0;
+    background: transparent;
+    scrollbar-width: auto;
+    scrollbar-color: rgba(236, 242, 252, 0.74) rgba(193, 204, 220, 0.12);
+}
+
+#systemExplorer #systemExplorerList::-webkit-scrollbar {
+    width: 0.88vh;
+}
+
+#systemExplorer #systemExplorerList::-webkit-scrollbar-track {
+    background: rgba(160, 173, 194, 0.14);
+    border-radius: 999px;
+    border: 0.06vh solid rgba(216, 226, 239, 0.14);
+}
+
+#systemExplorer #systemExplorerList::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, rgba(241, 247, 255, 0.98), rgba(184, 208, 237, 0.82));
+    border-radius: 999px;
+    border: 0.08vh solid rgba(34, 42, 59, 0.88);
+    box-shadow: 0 0 0.35vh rgba(158, 214, 255, 0.32);
+}
+
+#systemExplorer #systemExplorerList::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(180deg, rgba(249, 252, 255, 1), rgba(204, 223, 247, 0.92));
+    box-shadow: 0 0 0.5vh rgba(161, 220, 255, 0.44);
+}
+
+#systemExplorer .systemExplorer_item {
+    width: 100%;
+    text-align: left;
+    cursor: pointer;
+    margin: 0 !important;
+    padding: 0.78vh 0.85vh !important;
+    display: grid;
+    gap: 0.08vh;
+    background: rgba(44, 49, 66, 0.94) !important;
+    border: 0.13vh solid rgba(198, 208, 222, 0.72);
+    transition: background 110ms linear, border-color 110ms linear;
+}
+
+#systemExplorer .systemExplorer_item strong {
+    font-size: 2.45vh;
+    font-weight: 700;
+    line-height: 1.05;
+    letter-spacing: 0.01vh;
+    color: rgba(248, 251, 255, 0.98);
+}
+
+#systemExplorer .systemExplorer_item span,
+#systemExplorer .systemExplorer_item small {
+    font-size: 1.45vh;
+    line-height: 1.2;
+    opacity: 0.9;
+    color: rgba(218, 226, 239, 0.86);
+}
+
+#systemExplorer .systemExplorer_item:hover,
+#systemExplorer .systemExplorer_item.active {
+    background: rgba(90, 96, 111, 0.96) !important;
+    border-color: rgba(239, 245, 252, 0.95);
+}
+
+/* Hacker UI polish for App Manager + File Manager */
+#appManager,
+#systemExplorer {
+    background:
+        linear-gradient(180deg, rgba(7, 12, 20, 0.97), rgba(4, 9, 16, 0.98)),
+        radial-gradient(circle at 88% 8%, rgba(var(--color_r), var(--color_g), var(--color_b), 0.12), transparent 44%);
+    box-shadow:
+        0 0 2.2vh rgba(var(--color_r), var(--color_g), var(--color_b), 0.18),
+        inset 0 0 1.6vh rgba(var(--color_r), var(--color_g), var(--color_b), 0.08);
+}
+
+#appManager::after,
+#systemExplorer::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background:
+        repeating-linear-gradient(
+            180deg,
+            rgba(var(--color_r), var(--color_g), var(--color_b), 0.05) 0px,
+            rgba(var(--color_r), var(--color_g), var(--color_b), 0.05) 1px,
+            transparent 1px,
+            transparent 4px
+        );
+    opacity: 0.32;
+}
+
+#appManager .shell_overlay_title,
+#systemExplorer .shell_overlay_title {
+    color: rgb(var(--color_r), var(--color_g), var(--color_b));
+    text-shadow: 0 0 0.8vh rgba(var(--color_r), var(--color_g), var(--color_b), 0.45);
+}
+
+#appManager .shell_overlay_subtitle,
+#systemExplorer .shell_overlay_subtitle {
+    color: rgba(var(--color_r), var(--color_g), var(--color_b), 0.75);
+}
+
+#appManagerSearch,
+#systemExplorerSearch {
+    border-color: rgba(var(--color_r), var(--color_g), var(--color_b), 0.72);
+    color: rgba(226, 243, 255, 0.94);
+    background: rgba(8, 14, 23, 0.95);
+    box-shadow: inset 0 0 0.7vh rgba(var(--color_r), var(--color_g), var(--color_b), 0.08);
+}
+
+#systemExplorerBack {
+    border-color: rgba(var(--color_r), var(--color_g), var(--color_b), 0.72);
+    color: rgba(226, 243, 255, 0.94);
+    background: rgba(8, 14, 23, 0.95);
+    box-shadow: inset 0 0 0.7vh rgba(var(--color_r), var(--color_g), var(--color_b), 0.08);
+}
+
+#systemExplorerSearch {
+    width: 100%;
+    margin: 0;
+    box-sizing: border-box;
+    border: 0.14vh solid rgba(205, 215, 229, 0.65);
+    padding: 0.7vh 0.9vh;
+    font-size: 1.72vh;
+    font-family: var(--font_main);
+    transition: background 120ms linear, border-color 120ms linear, box-shadow 120ms linear;
+}
+
+#systemExplorerSearch::placeholder,
+#appManagerSearch::placeholder {
+    color: rgba(var(--color_r), var(--color_g), var(--color_b), 0.45);
+}
+
+#appManagerSearch:focus,
+#systemExplorerSearch:focus {
+    outline: none !important;
+    border-color: rgba(var(--color_r), var(--color_g), var(--color_b), 0.96);
+    box-shadow:
+        0 0 0.65vh rgba(var(--color_r), var(--color_g), var(--color_b), 0.3),
+        inset 0 0 0.8vh rgba(var(--color_r), var(--color_g), var(--color_b), 0.12);
+}
+
+#appManager .appManager_item,
+#systemExplorer .systemExplorer_item {
+    background: rgba(10, 17, 27, 0.95) !important;
+    border-color: rgba(var(--color_r), var(--color_g), var(--color_b), 0.56);
+}
+
+#appManager .appManager_item strong,
+#systemExplorer .systemExplorer_item strong {
+    color: rgba(226, 246, 255, 0.97);
+}
+
+#appManager .appManager_item span,
+#appManager .appManager_item small,
+#systemExplorer .systemExplorer_item span,
+#systemExplorer .systemExplorer_item small {
+    color: rgba(176, 212, 235, 0.9);
+}
+
+#appManager .appManager_item:hover,
+#appManager .appManager_item.active,
+#systemExplorer .systemExplorer_item:hover,
+#systemExplorer .systemExplorer_item.active {
+    background: rgba(var(--color_r), var(--color_g), var(--color_b), 0.2) !important;
+    border-color: rgba(var(--color_r), var(--color_g), var(--color_b), 0.95);
+    box-shadow: 0 0 0.9vh rgba(var(--color_r), var(--color_g), var(--color_b), 0.32);
+}
+
+#appManager .appManager_list::-webkit-scrollbar-thumb,
+#systemExplorer #systemExplorerList::-webkit-scrollbar-thumb {
+    background: linear-gradient(
+        180deg,
+        rgba(var(--color_r), var(--color_g), var(--color_b), 0.98),
+        rgba(var(--color_r), var(--color_g), var(--color_b), 0.7)
+    );
+    border-color: rgba(5, 10, 16, 0.9);
+}
+
+#appManager .appManager_list::-webkit-scrollbar-thumb:hover,
+#systemExplorer #systemExplorerList::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(
+        180deg,
+        rgba(var(--color_r), var(--color_g), var(--color_b), 1),
+        rgba(var(--color_r), var(--color_g), var(--color_b), 0.84)
+    );
 }
 
 /* Keyboard shortcuts modal */

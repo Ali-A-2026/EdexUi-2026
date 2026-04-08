@@ -13,6 +13,12 @@ class Modal {
         this.message = options.message || "Lorem ipsum dolor sit amet.";
         this.onclose = onclose;
         this.classes = "modal_popup";
+        if (typeof options.className === "string" && options.className.trim()) {
+            this.classes += " " + options.className.trim();
+        }
+        if (options.fixedPosition === true) {
+            this.classes += " fixed_center";
+        }
         let buttons = [];
         let augs = [];
         let zindex = 0;
@@ -37,7 +43,9 @@ class Modal {
                 this.classes += " info custom";
                 zindex = 500;
                 buttons = options.buttons || [];
-                buttons.push({label:"Close", action:"window.modals['"+this.id+"'].close();"});
+                if (options.includeDefaultClose !== false) {
+                    buttons.push({label:"Close", action:"window.modals['"+this.id+"'].close();"});
+                }
                 augs.push("tr-clip", "bl-clip");
                 break;
             default:
@@ -111,6 +119,10 @@ class Modal {
         window.modals[this.id] = this;
         document.body.appendChild(element);
         this.focus();
+
+        if (options.draggable === false) {
+            return this;
+        }
 
         // Allow dragging the modal around
         let draggedModal = document.getElementById(`modal_${this.id}`);

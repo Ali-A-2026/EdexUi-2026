@@ -44,10 +44,23 @@ section.mod_column > div {
 section#mod_column_left {
     left: -0.555vh;
     align-items: flex-end;
+    justify-content: flex-start;
 }
 
 section#mod_column_left > h3.title {
     left: 0.555vh;
+}
+
+section#mod_column_left > div {
+    margin-bottom: 0.55vh;
+}
+
+section#mod_column_left > div#mod_toplist {
+    flex: 1 1 auto;
+    min-height: 0;
+    margin-bottom: 0;
+    align-self: stretch;
+    overflow: hidden;
 }
 
 section#mod_column_right {

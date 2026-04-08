@@ -47,6 +47,28 @@ ipc.on("log", (e, type, content) => {
 });
 
 var win, tty, extraTtys;
+let frontendReadyShown = false;
+let frontendShowFallbackTimer = null;
+function clearFrontendShowFallback() {
+    if (frontendShowFallbackTimer) {
+        clearTimeout(frontendShowFallbackTimer);
+        frontendShowFallbackTimer = null;
+    }
+}
+function scheduleFrontendShowFallback(delayMs, reason) {
+    clearFrontendShowFallback();
+    frontendShowFallbackTimer = setTimeout(() => {
+        if (frontendReadyShown || !win || win.isDestroyed()) return;
+        signale.warn(`Showing frontend window via fallback (${reason})`);
+        showFrontendWindow();
+    }, delayMs);
+}
+function showFrontendWindow() {
+    if (!win || win.isDestroyed() || frontendReadyShown) return;
+    clearFrontendShowFallback();
+    frontendReadyShown = true;
+    win.show();
+}
 const settingsFile = path.join(electron.app.getPath("userData"), "settings.json");
 const shortcutsFile = path.join(electron.app.getPath("userData"), "shortcuts.json");
 const lastWindowStateFile = path.join(electron.app.getPath("userData"), "lastWindowState.json");
@@ -199,13 +221,11 @@ if (!fs.existsSync(settingsFile)) {
     fs.writeFileSync(settingsFile, JSON.stringify({
         shell: (process.platform === "win32") ? "powershell.exe" : "bash",
         shellArgs: '',
-        cwd: electron.app.getPath("userData"),
         keyboard: "en-US",
         theme: "tron",
         termFontSize: 15,
         audio: true,
         audioVolume: 1.0,
-        disableFeedbackAudio: false,
         clockHours: 24,
         pingAddr: "1.1.1.1",
         port: 3000,
@@ -213,7 +233,7 @@ if (!fs.existsSync(settingsFile)) {
         nocursor: false,
         forceFullscreen: false,
         allowWindowed: true,
-        keepGeometry: false,
+        keepGeometry: true,
         excludeThreadsFromToplist: true,
         hideDotfiles: false,
         fsListView: false,
@@ -377,6 +397,28 @@ function listInstalledApps() {
     return Array.from(apps.values()).sort((a, b) => a.name.localeCompare(b.name));
 }
 
+let installedAppsCache = null;
+let installedAppsCachePromise = null;
+
+function getInstalledAppsCached(forceRefresh = false) {
+    if (!forceRefresh && Array.isArray(installedAppsCache)) {
+        return Promise.resolve(installedAppsCache);
+    }
+    if (!forceRefresh && installedAppsCachePromise) {
+        return installedAppsCachePromise;
+    }
+
+    installedAppsCachePromise = Promise.resolve().then(() => {
+        const apps = listInstalledApps();
+        installedAppsCache = apps;
+        return apps;
+    }).finally(() => {
+        installedAppsCachePromise = null;
+    });
+
+    return installedAppsCachePromise;
+}
+
 function launchDesktopApp(appId) {
     const app = listInstalledApps().find(entry => entry.id === appId);
     if (!app) {
@@ -431,6 +473,9 @@ function launchDesktopApp(appId) {
 
 function createWindow(settings) {
     signale.info("Creating window...");
+    const allowWindowed = settings.allowWindowed !== false;
+    const lockedFullscreen = allowWindowed ? (settings.forceFullscreen === true) : true;
+    frontendReadyShown = false;
 
     let display;
     if (!isNaN(settings.monitor)) {
@@ -439,6 +484,7 @@ function createWindow(settings) {
         display = electron.screen.getPrimaryDisplay();
     }
     let {x, y, width, height} = display.workArea;
+
     win = new BrowserWindow({
         title: "EdexUi-2026",
         x,
@@ -446,11 +492,14 @@ function createWindow(settings) {
         width,
         height,
         show: false,
-        resizable: true,
-        movable: settings.allowWindowed || false,
-        fullscreen: settings.forceFullscreen || false,
+        paintWhenInitiallyHidden: true,
+        resizable: allowWindowed,
+        movable: allowWindowed,
+        fullscreen: lockedFullscreen,
+        fullscreenable: allowWindowed,
+        maximizable: allowWindowed,
         autoHideMenuBar: true,
-        frame: settings.allowWindowed || false,
+        frame: allowWindowed,
         backgroundColor: '#000000',
         webPreferences: {
             devTools: true,
@@ -464,30 +513,38 @@ function createWindow(settings) {
             experimentalFeatures: settings.experimentalFeatures || false
         }
     });
-
+    win.setBackgroundColor("#000000");
     win.loadURL(url.format({
         pathname: path.join(__dirname, 'ui.html'),
         protocol: 'file:',
         slashes: true
     }));
+    win.webContents.once("did-finish-load", () => {
+        scheduleFrontendShowFallback(1500, "did-finish-load");
+    });
     remoteMain.enable(win.webContents);
 
     signale.complete("Frontend window created!");
-    win.show();
-    if (!settings.allowWindowed) {
+    if (!allowWindowed) {
         win.setResizable(false);
+        win.setFullScreen(true);
+    } else if (lockedFullscreen) {
+        win.setFullScreen(true);
     } else if (!require(lastWindowStateFile)["useFullscreen"]) {
         win.setFullScreen(false);
         win.maximize();
     }
 
     signale.watch("Waiting for frontend connection...");
+    scheduleFrontendShowFallback(8000, "startup-timeout");
 }
 
 app.on('ready', async () => {
     signale.pending(`Loading settings file...`);
     let settings = require(settingsFile);
     const settingsDefaults = {
+        forceFullscreen: false,
+        allowWindowed: true,
         keepGeometry: false,
         termHardwareAcceleration: false,
         termLigatures: false,
@@ -507,12 +564,21 @@ app.on('ready', async () => {
     if (wroteSettingsDefaults) {
         fs.writeFileSync(settingsFile, JSON.stringify(settings, "", 4));
     }
+
+    const resolvedStartDir = (
+        typeof settings.cwd === "string"
+        && settings.cwd.trim()
+        && require("fs").existsSync(settings.cwd.trim())
+    ) ? settings.cwd.trim() : os.homedir();
+    if (Object.prototype.hasOwnProperty.call(settings, "cwd")) {
+        delete settings.cwd;
+        fs.writeFileSync(settingsFile, JSON.stringify(settings, "", 4));
+    }
+
     signale.pending(`Resolving shell path...`);
     settings.shell = await which(settings.shell).catch(e => { throw(e) });
     signale.info(`Shell found at ${settings.shell}`);
     signale.success(`Settings loaded!`);
-
-    if (!require("fs").existsSync(settings.cwd)) throw new Error("Configured cwd path does not exist.");
 
     // See #366
     let cleanEnv = await require("shell-env")(settings.shell).catch(e => { throw e; });
@@ -538,7 +604,7 @@ app.on('ready', async () => {
         role: "server",
         shell: settings.shell,
         params: parseShellArgs(settings.shellArgs),
-        cwd: settings.cwd,
+        cwd: resolvedStartDir,
         env: cleanEnv,
         port: settings.port || 3000
     });
@@ -565,6 +631,9 @@ app.on('ready', async () => {
     require("./_multithread.js");
 
     createWindow(settings);
+    getInstalledAppsCached(false).catch(error => {
+        signale.warn("Installed apps preload failed", error && (error.message || String(error)));
+    });
 
     // Support for more terminals, used for creating tabs (currently limited to 4 extra terms)
     extraTtys = {};
@@ -599,7 +668,7 @@ app.on('ready', async () => {
                 role: "server",
                 shell: settings.shell,
                 params: parseShellArgs(settings.shellArgs),
-                cwd: requestedCwd || tty.tty._cwd || settings.cwd,
+                cwd: requestedCwd || tty.tty._cwd || resolvedStartDir,
                 env: cleanEnv,
                 port: port
             });
@@ -643,12 +712,18 @@ app.on('ready', async () => {
     ipc.on("setKbOverride", (e, arg) => {
         kbOverride = arg;
     });
+    ipc.on("frontend-ready", () => {
+        // Keep hidden until renderer reports first painted boot frame.
+    });
+    ipc.on("frontend-painted", () => {
+        showFrontendWindow();
+    });
     ipc.on("appManager:getInstalledApps", e => {
-        try {
-            e.sender.send("appManager:installedApps", listInstalledApps());
-        } catch (error) {
+        getInstalledAppsCached(false).then(apps => {
+            e.sender.send("appManager:installedApps", apps);
+        }).catch(error => {
             e.sender.send("appManager:installedApps", { error: error.message || String(error) });
-        }
+        });
     });
     ipc.on("appManager:launch", (e, appId) => {
         try {
@@ -681,6 +756,7 @@ app.on('web-contents-created', (e, contents) => {
 
 app.on('window-all-closed', () => {
     signale.info("All windows closed");
+    clearFrontendShowFallback();
     app.quit();
 });
 
