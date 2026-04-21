@@ -13,24 +13,23 @@
   ],
   "main": "src/_boot.js",
   "scripts": {
-    "start": "env -u ELECTRON_RUN_AS_NODE ELECTRON_OZONE_PLATFORM_HINT=x11 electron --ozone-platform=x11 src",
-    "start:fast": "env -u ELECTRON_RUN_AS_NODE ELECTRON_OZONE_PLATFORM_HINT=x11 electron --ozone-platform=x11 src --nointro",
-    "install-linux": "npm install && cd src && npm install --legacy-peer-deps && npx electron-rebuild -f -w node-pty && cd ..",
-    "preinstall-windows": "npm install --global --production windows-build-tools && npm install --global node-gyp && setx PYTHON \"%USERPROFILE%\\.windows-build-tools\\python27\\python.exe\"",
-    "install-windows": "npm install && cd src && npm install --legacy-peer-deps && npx electron-rebuild -f -w node-pty && cd ..",
-    "prebuild-linux": "rsync -a --info=progress2 src/ prebuild-src --exclude node_modules && node prebuild-minify.js && cd prebuild-src && npm install --legacy-peer-deps",
-    "prebuild-darwin": "rsync -a src/ prebuild-src --exclude node_modules && node prebuild-minify.js && cd prebuild-src && npm install --legacy-peer-deps",
-    "prebuild-windows": "mkdir prebuild-src && xcopy src\\* prebuild-src\\ /E /C /Q /Y && node prebuild-minify.js && cd prebuild-src && npm install --legacy-peer-deps",
-    "build-linux": "./node_modules/.bin/electron-builder build -l --x64 --ia32 --arm64 --armv7l",
-    "build-darwin": "./node_modules/.bin/electron-builder build -m",
-    "build-windows": "node_modules\\.bin\\electron-builder build -w",
-    "postbuild-linux": "rm -R prebuild-src",
-    "postbuild-darwin": "rm -R prebuild-src",
-    "postbuild-windows": "rmdir /S /Q prebuild-src",
-    "test": "rsync -a --info=progress2 src/ prebuild-src --exclude node_modules && node prebuild-minify.js && cd prebuild-src && npm install --legacy-peer-deps && npm audit --omit=dev && cd .. && rm -R prebuild-src",
-    "init-file-icons": "git submodule update --init",
-    "update-file-icons": "git submodule foreach git pull origin master && node file-icons-generator.js"
-  },
+  "start": "unset ELECTRON_RUN_AS_NODE 2>/dev/null; ELECTRON_OZONE_PLATFORM_HINT=x11 electron src || electron src",
+  "start:fast": "unset ELECTRON_RUN_AS_NODE 2>/dev/null; ELECTRON_OZONE_PLATFORM_HINT=x11 electron src --nointro || electron src --nointro",
+
+  "install": "npm install && cd src && npm install --legacy-peer-deps && npx electron-rebuild -f -w node-pty && cd ..",
+
+  "prebuild": "rm -rf prebuild-src && mkdir -p prebuild-src && cp -r src/* prebuild-src/ && node prebuild-minify.js && cd prebuild-src && npm install --legacy-peer-deps",
+
+  "build": "./node_modules/.bin/electron-builder build",
+
+  "postbuild": "rm -rf prebuild-src",
+
+  "test": "rm -rf prebuild-src && mkdir -p prebuild-src && cp -r src/* prebuild-src/ && node prebuild-minify.js && cd prebuild-src && npm install --legacy-peer-deps && npm audit --omit=dev && cd .. && rm -rf prebuild-src",
+
+  "init-file-icons": "git submodule update --init",
+
+  "update-file-icons": "git submodule foreach git pull origin master && node file-icons-generator.js"
+},
   "repository": {
     "type": "git",
     "url": "git+https://github.com/Ali-A-2026/EdexUi-2026.git"
