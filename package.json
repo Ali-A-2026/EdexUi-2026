@@ -13,22 +13,17 @@
   ],
   "main": "src/_boot.js",
   "scripts": {
-  "start": "unset ELECTRON_RUN_AS_NODE 2>/dev/null; ELECTRON_OZONE_PLATFORM_HINT=x11 electron src || electron src",
-  "start:fast": "unset ELECTRON_RUN_AS_NODE 2>/dev/null; ELECTRON_OZONE_PLATFORM_HINT=x11 electron src --nointro || electron src --nointro",
+  "start": "electron src",
 
-  "install": "npm install && cd src && npm install --legacy-peer-deps && npx electron-rebuild -f -w node-pty && cd ..",
+  "install": "npm install && cd src && npm install --legacy-peer-deps && cd ..",
 
-  "prebuild": "rm -rf prebuild-src && mkdir -p prebuild-src && cp -r src/* prebuild-src/ && node prebuild-minify.js && cd prebuild-src && npm install --legacy-peer-deps",
+  "rebuild": "npx electron-rebuild -f -w node-pty",
 
-  "build": "./node_modules/.bin/electron-builder build",
+  "prebuild": "rm -rf prebuild-src && mkdir -p prebuild-src && cp -r src/* prebuild-src/ && node prebuild-minify.js && cd prebuild-src && npm install --legacy-peer-deps && cd ..",
 
-  "postbuild": "rm -rf prebuild-src",
+  "build": "npm run rebuild && ./node_modules/.bin/electron-builder build",
 
-  "test": "rm -rf prebuild-src && mkdir -p prebuild-src && cp -r src/* prebuild-src/ && node prebuild-minify.js && cd prebuild-src && npm install --legacy-peer-deps && npm audit --omit=dev && cd .. && rm -rf prebuild-src",
-
-  "init-file-icons": "git submodule update --init",
-
-  "update-file-icons": "git submodule foreach git pull origin master && node file-icons-generator.js"
+  "postbuild": "rm -rf prebuild-src"
 },
   "repository": {
     "type": "git",
