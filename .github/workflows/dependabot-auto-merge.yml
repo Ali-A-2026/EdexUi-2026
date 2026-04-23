@@ -15,7 +15,7 @@ permissions:
 jobs:
   dependabot:
     runs-on: ubuntu-latest
-    if: github.event.pull_request.user.login == 'dependabot[bot]' && github.event.pull_request.draft == false
+    if: contains(fromJson('["dependabot[bot]","app/dependabot"]'), github.event.pull_request.user.login) && github.event.pull_request.draft == false
     steps:
       - name: Auto-approve Dependabot PR
         run: |
