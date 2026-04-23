@@ -17,7 +17,7 @@ EdexUi-2026 is a maintained continuation of the original eDEX-UI project, update
 - [Contributing](#contributing)
 - [Security](#security)
 
-Latest public release: [v2026.1.1](https://github.com/Ali-A-2026/EdexUi-2026/releases/tag/v2026.1.1)
+Latest public release: [v2026.4.22](https://github.com/Ali-A-2026/EdexUi-2026/releases/tag/v2026.4.22)
 
 This continuation stays respectful to upstream:
 

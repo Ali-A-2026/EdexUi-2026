@@ -12,7 +12,7 @@ These credits appear in:
 
 - `README.md`
 - `CHANGELOG.md`
-- `RELEASE_NOTES_v2026.1.1.md`
+- `RELEASE_NOTES_v2026.4.22.md`
 - `package.json`
 - `src/package.json`
 - In-app Settings modal

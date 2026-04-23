@@ -14,6 +14,21 @@ Small internal cleanup, packaging prep, or silent polish updates should stay out
 This project is a maintained continuation of the original eDEX-UI codebase.
 It preserves upstream credit and remains licensed under `GPL-3.0-or-later`.
 
+## [2026.4.22] - 2026-04-23
+
+Release-alignment update for `v2026.4.22` focused on packaging stability and CI release automation.
+
+### Fixed
+
+- Fixed recursive install behavior in CI by replacing legacy install/build script paths.
+- Fixed macOS release upload flow so `.dmg` assets are attached to the active pushed tag.
+- Fixed remaining project metadata drift where release version fields still pointed to `2026.1.1`.
+
+### Packaging
+
+- Updated artifact naming to include explicit release version (`v2026.4.22`) across packaged outputs.
+- Synced root and `src` package metadata and lockfiles to the same release version.
+
 ## [2026.1.1] - 2026-04-04
 
 Release-readiness update focused on polish, packaging, attribution, and smoother runtime behavior.
