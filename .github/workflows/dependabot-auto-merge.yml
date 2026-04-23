@@ -26,9 +26,14 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Enable auto-merge Dependabot PR
+      - name: Merge Dependabot PR
         run: |
           gh pr merge \
+            --repo "${{ github.repository }}" \
+            --squash \
+            --delete-branch \
+            "${{ github.event.pull_request.number }}" \
+          || gh pr merge \
             --repo "${{ github.repository }}" \
             --auto \
             --squash \
