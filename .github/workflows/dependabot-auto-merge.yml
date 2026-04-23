@@ -17,33 +17,73 @@ jobs:
     runs-on: ubuntu-latest
     if: contains(fromJson('["dependabot[bot]","app/dependabot"]'), github.event.pull_request.user.login) && github.event.pull_request.draft == false
     steps:
-      - name: Auto-approve Dependabot PR
+      - name: Try auto-approve Dependabot PR
         run: |
-          gh pr review \
+          if gh pr review \
             --repo "${{ github.repository }}" \
             --approve "${{ github.event.pull_request.number }}" \
-            -b "Auto-approved dependency update."
+            -b "Auto-approved dependency update."; then
+            echo "PR approved by workflow."
+          else
+            echo "::warning::GitHub Actions is not permitted to approve PRs in this repository. Continuing without approval."
+          fi
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Merge Dependabot PR
+      - name: Merge Dependabot PR (best effort)
         run: |
+          set +e
+
+          repo="${{ github.repository }}"
+          pr="${{ github.event.pull_request.number }}"
+
+          pr_state="$(gh pr view "$pr" --repo "$repo" --json state --jq .state)"
+          merge_state="$(gh pr view "$pr" --repo "$repo" --json mergeStateStatus --jq .mergeStateStatus)"
+          is_draft="$(gh pr view "$pr" --repo "$repo" --json isDraft --jq .isDraft)"
+
+          echo "state=$pr_state mergeStateStatus=$merge_state isDraft=$is_draft"
+
+          if [ "$pr_state" != "OPEN" ] || [ "$is_draft" = "true" ]; then
+            echo "PR is not open/ready. Exiting without failure."
+            exit 0
+          fi
+
+          if [ "$merge_state" = "DIRTY" ]; then
+            gh pr comment "$pr" --repo "$repo" --body "@dependabot rebase" || true
+            echo "::warning::PR is in conflict (DIRTY). Rebase requested; workflow will exit successfully."
+            exit 0
+          fi
+
+          merged=0
+
           gh pr merge \
-            --repo "${{ github.repository }}" \
+            --repo "$repo" \
             --admin \
             --squash \
             --delete-branch \
-            "${{ github.event.pull_request.number }}" \
-          || gh pr merge \
-            --repo "${{ github.repository }}" \
-            --squash \
-            --delete-branch \
-            "${{ github.event.pull_request.number }}" \
-          || gh pr merge \
-            --repo "${{ github.repository }}" \
-            --auto \
-            --squash \
-            --delete-branch \
-            "${{ github.event.pull_request.number }}"
+            "$pr" && merged=1
+
+          if [ "$merged" -eq 0 ]; then
+            gh pr merge \
+              --repo "$repo" \
+              --squash \
+              --delete-branch \
+              "$pr" && merged=1
+          fi
+
+          if [ "$merged" -eq 0 ]; then
+            gh pr merge \
+              --repo "$repo" \
+              --auto \
+              --squash \
+              --delete-branch \
+              "$pr" && merged=1
+          fi
+
+          if [ "$merged" -eq 1 ]; then
+            echo "PR merged successfully."
+          else
+            echo "::warning::Could not merge automatically (checks/policy/API state). Leaving PR open without failing workflow."
+          fi
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
