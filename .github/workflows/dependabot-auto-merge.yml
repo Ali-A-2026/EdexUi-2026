@@ -30,6 +30,12 @@ jobs:
         run: |
           gh pr merge \
             --repo "${{ github.repository }}" \
+            --admin \
+            --squash \
+            --delete-branch \
+            "${{ github.event.pull_request.number }}" \
+          || gh pr merge \
+            --repo "${{ github.repository }}" \
             --squash \
             --delete-branch \
             "${{ github.event.pull_request.number }}" \
