@@ -7,6 +7,9 @@ on:
       - synchronize
       - reopened
       - ready_for_review
+  schedule:
+    - cron: "*/30 * * * *"
+  workflow_dispatch:
 
 permissions:
   pull-requests: write
@@ -15,75 +18,66 @@ permissions:
 jobs:
   dependabot:
     runs-on: ubuntu-latest
-    if: contains(fromJson('["dependabot[bot]","app/dependabot"]'), github.event.pull_request.user.login) && github.event.pull_request.draft == false
+    if: |
+      github.event_name != 'pull_request_target' ||
+      (
+        contains(fromJson('["dependabot[bot]","app/dependabot"]'), github.event.pull_request.user.login) &&
+        github.event.pull_request.draft == false
+      )
     steps:
-      - name: Try auto-approve Dependabot PR
-        run: |
-          if gh pr review \
-            --repo "${{ github.repository }}" \
-            --approve "${{ github.event.pull_request.number }}" \
-            -b "Auto-approved dependency update."; then
-            echo "PR approved by workflow."
-          else
-            echo "::warning::GitHub Actions is not permitted to approve PRs in this repository. Continuing without approval."
-          fi
+      - name: Auto-maintain Dependabot pull requests
+        shell: bash
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Merge Dependabot PR (best effort)
+          REPO: ${{ github.repository }}
         run: |
           set +e
 
-          repo="${{ github.repository }}"
-          pr="${{ github.event.pull_request.number }}"
-
-          pr_state="$(gh pr view "$pr" --repo "$repo" --json state --jq .state)"
-          merge_state="$(gh pr view "$pr" --repo "$repo" --json mergeStateStatus --jq .mergeStateStatus)"
-          is_draft="$(gh pr view "$pr" --repo "$repo" --json isDraft --jq .isDraft)"
-
-          echo "state=$pr_state mergeStateStatus=$merge_state isDraft=$is_draft"
-
-          if [ "$pr_state" != "OPEN" ] || [ "$is_draft" = "true" ]; then
-            echo "PR is not open/ready. Exiting without failure."
-            exit 0
-          fi
-
-          if [ "$merge_state" = "DIRTY" ]; then
-            gh pr comment "$pr" --repo "$repo" --body "@dependabot rebase" || true
-            echo "::warning::PR is in conflict (DIRTY). Rebase requested; workflow will exit successfully."
-            exit 0
-          fi
-
-          merged=0
-
-          gh pr merge \
-            --repo "$repo" \
-            --admin \
-            --squash \
-            --delete-branch \
-            "$pr" && merged=1
-
-          if [ "$merged" -eq 0 ]; then
-            gh pr merge \
-              --repo "$repo" \
-              --squash \
-              --delete-branch \
-              "$pr" && merged=1
-          fi
-
-          if [ "$merged" -eq 0 ]; then
-            gh pr merge \
-              --repo "$repo" \
-              --auto \
-              --squash \
-              --delete-branch \
-              "$pr" && merged=1
-          fi
-
-          if [ "$merged" -eq 1 ]; then
-            echo "PR merged successfully."
+          if [ "${{ github.event_name }}" = "pull_request_target" ]; then
+            prs="${{ github.event.pull_request.number }}"
           else
-            echo "::warning::Could not merge automatically (checks/policy/API state). Leaving PR open without failing workflow."
+            prs="$(gh pr list --repo "$REPO" --state open --author 'app/dependabot' --json number --jq '.[].number')"
           fi
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+          if [ -z "$prs" ]; then
+            echo "No open Dependabot PRs to process."
+            exit 0
+          fi
+
+          for pr in $prs; do
+            echo "Processing Dependabot PR #$pr"
+
+            gh pr review --repo "$REPO" --approve "$pr" -b "Auto-approved dependency update." || true
+
+            state="$(gh pr view "$pr" --repo "$REPO" --json state --jq .state)"
+            draft="$(gh pr view "$pr" --repo "$REPO" --json isDraft --jq .isDraft)"
+            merge_state="$(gh pr view "$pr" --repo "$REPO" --json mergeStateStatus --jq .mergeStateStatus)"
+
+            echo "state=$state draft=$draft mergeStateStatus=$merge_state"
+            if [ "$state" != "OPEN" ] || [ "$draft" = "true" ]; then
+              echo "Skipping PR #$pr because it is not open/ready."
+              continue
+            fi
+
+            if [ "$merge_state" = "DIRTY" ]; then
+              gh pr comment "$pr" --repo "$REPO" --body "@dependabot rebase" || true
+              echo "PR #$pr is in conflict; requested rebase."
+              continue
+            fi
+
+            merged=0
+
+            gh pr merge --repo "$REPO" --admin --squash --delete-branch "$pr" && merged=1
+            if [ "$merged" -eq 0 ]; then
+              gh pr merge --repo "$REPO" --squash --delete-branch "$pr" && merged=1
+            fi
+            if [ "$merged" -eq 0 ]; then
+              gh pr merge --repo "$REPO" --auto --squash --delete-branch "$pr" && merged=1
+            fi
+
+            if [ "$merged" -eq 1 ]; then
+              echo "PR #$pr merged."
+            else
+              echo "::warning::Could not merge PR #$pr now (checks/policy/API state)."
+            fi
+          done
